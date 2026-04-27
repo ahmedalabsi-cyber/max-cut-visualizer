@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Max-Cut — NP-Complete Interactive Visualizer</title>
+<style>
+:root {
+  --bg: #060810;
+  --panel: #0b0e1a;
+  --panel2: #0f1322;
+  --border: #1a2035;
+  --border-bright: #263050;
+  --accent: #00e5ff;
+  --accent-glow: rgba(0,229,255,0.15);
+  --accent2: #ff4d6d;
+  --accent3: #39ff7e;
+  --accent4: #ffb700;
+  --accent5: #a78bfa;
+  --set-s: #00e5ff;
+  --set-vs: #ff4d6d;
+  --cut-edge: #39ff7e;
+  --uncut-edge: #263050;
+  --text: #dce8f5;
+  --text2: #5a7299;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow-x: hidden; }
+
+body {
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  background-image: radial-gradient(circle, #1a2035 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* HEADER */
+header {
+  background: rgba(6,8,16,0.96);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 24px rgba(0,0,0,0.6);
+}
+.logo {
+  font-size: 1.2rem; font-weight: 800; letter-spacing: -0.5px;
+  background: linear-gradient(90deg, var(--accent), #7dd3fc);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.logo span {
+  background: linear-gradient(90deg, var(--accent2), #fbbf24);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.subtitle { font-size: 0.68rem; color: var(--text2); font-family: 'Consolas','Courier New',monospace; }
+.nav-tabs { margin-left: auto; display: flex; gap: 4px; background: rgba(255,255,255,0.03); padding: 4px; border-radius: 10px; border: 1px solid var(--border); flex-wrap: wrap; }
+.nav-tab { padding: 5px 14px; border-radius: 7px; font-size: 0.73rem; font-weight: 600; cursor: pointer; background: transparent; border: none; color: var(--text2); transition: all 0.2s; }
+.nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+.nav-tab.active { background: linear-gradient(135deg, var(--accent), #0ea5e9); color: #000; font-weight: 700; box-shadow: 0 0 16px var(--accent-glow); }
+.author-badge { display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;background:rgba(255,255,255,0.03);border:1px solid var(--border-bright);border-radius:25px; }
+.author-avatar { width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7dd3fc);color:#000;font-weight:800;font-size:0.75rem;display:flex;align-items:center;justify-content:center; }
+.author-name { font-size:0.75rem;font-weight:700;background:linear-gradient(90deg,var(--accent),#7dd3fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+.author-meta { font-size:0.6rem;color:var(--text2);font-family:'Consolas',monospace; }
+
+/* LAYOUT */
+.main-container { display:flex; min-height:calc(100vh - 52px); }
+.left-panel { width:380px;min-width:380px;background:rgba(11,14,26,0.9);border-right:1px solid var(--border);overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px; }
+.right-panel { flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px; }
+
+/* SECTIONS */
+.section { background:rgba(15,19,34,0.95);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.3);transition:border-color 0.2s; }
+.section:hover { border-color:var(--border-bright); }
+.section-header { padding:8px 13px;font-size:0.65rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);display:flex;align-items:center;gap:7px; }
+.section-header .dot { width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent); }
+.section-body { padding:12px 13px; }
+
+/* GRAPH BUILDER */
+.graph-input { display:flex;flex-direction:column;gap:8px; }
+.graph-input textarea { background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Consolas','Courier New',monospace;font-size:0.75rem;padding:8px;resize:vertical;min-height:70px;outline:none; }
+.graph-input textarea:focus { border-color:var(--accent);box-shadow:0 0 10px var(--accent-glow); }
+.preset-grid { display:grid;grid-template-columns:1fr 1fr;gap:6px; }
+.preset-btn { padding:5px 8px;font-size:0.68rem;font-weight:600;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;transition:all 0.2s;text-align:center; }
+.preset-btn:hover { border-color:var(--accent);color:var(--accent);background:var(--accent-glow); }
+
+/* BUTTONS */
+.btn-row { display:flex;gap:6px;flex-wrap:wrap; }
+.btn { padding:8px 14px;border-radius:var(--radius-sm);font-size:0.74rem;font-weight:700;cursor:pointer;border:none;transition:all 0.18s; }
+.btn-primary { background:linear-gradient(135deg,var(--accent),#0ea5e9);color:#000;box-shadow:0 0 14px var(--accent-glow); }
+.btn-primary:hover { box-shadow:0 0 22px rgba(0,229,255,0.4);transform:translateY(-1px); }
+.btn-secondary { background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text); }
+.btn-secondary:hover { border-color:var(--accent);color:var(--accent);background:var(--accent-glow); }
+.btn-danger { background:linear-gradient(135deg,var(--accent2),#cc0033);color:#fff;box-shadow:0 2px 12px rgba(255,77,109,0.2); }
+.btn-danger:hover { box-shadow:0 2px 20px rgba(255,77,109,0.4);transform:translateY(-1px); }
+.btn-warn { background:linear-gradient(135deg,var(--accent4),#e67e00);color:#000; }
+.btn:disabled { opacity:0.3;cursor:not-allowed;transform:none!important;box-shadow:none!important; }
+
+/* STATUS */
+.status-row { display:flex;justify-content:space-between;align-items:center; }
+.step-counter { font-family:'Consolas',monospace;font-size:0.8rem;color:var(--accent);font-weight:700; }
+.status-badge { padding:3px 10px;border-radius:20px;font-size:0.64rem;font-weight:700;letter-spacing:1px; }
+.status-idle { background:rgba(100,120,160,0.1);color:var(--text2);border:1px solid var(--border); }
+.status-ready { background:rgba(0,229,255,0.1);color:var(--accent);border:1px solid rgba(0,229,255,0.3); }
+.status-playing { background:rgba(57,255,126,0.1);color:var(--accent3);border:1px solid rgba(57,255,126,0.3); }
+.status-paused { background:rgba(255,183,0,0.1);color:var(--accent4);border:1px solid rgba(255,183,0,0.3); }
+.status-done { background:rgba(57,255,126,0.15);color:var(--accent3);border:1px solid rgba(57,255,126,0.4); }
+
+/* SPEED */
+.speed-row { display:flex;align-items:center;gap:8px; }
+.speed-row input[type=range] { flex:1;accent-color:var(--accent); }
+.speed-val { font-family:'Consolas',monospace;font-size:0.75rem;color:var(--accent);min-width:32px;font-weight:700; }
+
+/* STATS */
+.stats-grid { display:grid;grid-template-columns:1fr 1fr;gap:7px; }
+.stat-card { background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;text-align:center;transition:all 0.2s; }
+.stat-card:hover { border-color:var(--accent);box-shadow:0 0 10px var(--accent-glow); }
+.stat-val { font-family:'Consolas',monospace;font-size:1.3rem;font-weight:700;color:var(--accent);line-height:1; }
+.stat-label { font-size:0.6rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.8px;margin-top:3px; }
+
+/* LEGEND */
+.legend { display:flex;flex-wrap:wrap;gap:7px; }
+.legend-item { display:flex;align-items:center;gap:5px;font-size:0.67rem;color:var(--text2); }
+.legend-dot { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
+.legend-line { width:18px;height:3px;border-radius:2px;flex-shrink:0; }
+
+/* VISUALIZATION */
+#viz-container { background:rgba(4,6,12,0.97);border-radius:var(--radius);border:1px solid var(--border);padding:16px;min-height:380px;position:relative;overflow:hidden;box-shadow:inset 0 0 60px rgba(0,0,0,0.5); }
+#viz-container::before { content:'';position:absolute;inset:0;border-radius:var(--radius);background:radial-gradient(ellipse at 50% 0%,rgba(0,229,255,0.04) 0%,transparent 70%);pointer-events:none; }
+#viz-svg { width:100%;display:block;cursor:grab; }
+#viz-svg { width:100%;display:block; }
+.viz-title { font-size:0.65rem;font-weight:700;color:var(--text2);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:12px; }
+
+/* PSEUDOCODE */
+#pseudo-container { font-family:'Consolas','Courier New',monospace;font-size:0.75rem;background:rgba(4,6,12,0.85);border-radius:var(--radius-sm);border:1px solid var(--border);overflow-x:hidden;overflow-y:auto;max-height:280px;padding:6px 0; }
+.pseudo-line { display:flex;align-items:flex-start;padding:3px 12px;gap:8px;cursor:default;transition:background 0.15s;white-space:pre;line-height:1.6; }
+.pseudo-line:hover { background:rgba(255,255,255,0.03); }
+.pseudo-line.active { background:rgba(0,229,255,0.1)!important;border-left:2px solid var(--accent); }
+.pseudo-num { color:#2a3a55;min-width:20px;text-align:right;user-select:none;font-size:0.65rem;padding-top:2px; }
+.pseudo-text { color:#a0b4cc;flex:1; }
+.pseudo-line.active .pseudo-text { color:var(--accent);text-shadow:0 0 8px rgba(0,229,255,0.3); }
+
+/* EXPLANATION */
+#explanation { background:linear-gradient(135deg,rgba(0,229,255,0.04) 0%,rgba(0,0,0,0.2) 100%);border:1px solid rgba(0,229,255,0.15);border-radius:var(--radius-sm);padding:11px 13px;font-size:0.78rem;line-height:1.7;color:var(--text);min-height:50px;font-family:'Consolas',monospace; }
+#explanation .hl { color:var(--accent);font-weight:600; }
+#explanation .val { color:var(--accent2);font-weight:700; }
+#explanation .good { color:var(--accent3);font-weight:700; }
+
+/* PAGES */
+.page { display:none; }
+.page.active { display:flex;min-height:calc(100vh - 52px);flex-wrap:wrap; }
+
+/* COLLAPSIBLE */
+.collapsible-header { display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 14px;font-size:0.78rem;font-weight:700;color:var(--text);background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border);transition:background 0.15s; }
+.collapsible-header:hover { background:rgba(255,255,255,0.04); }
+.collapsible-body { padding:13px 14px;font-size:0.78rem;line-height:1.8;color:var(--text2); }
+.collapsible-arrow { transition:transform 0.2s;font-size:0.65rem;color:var(--text2); }
+.collapsible-header.open .collapsible-arrow { transform:rotate(90deg); }
+
+/* CONCEPT BOXES */
+.concept-box { background:rgba(0,0,0,0.25);border-left:3px solid var(--accent);border-radius:0 var(--radius-sm) var(--radius-sm) 0;border-top:1px solid rgba(255,255,255,0.04);border-right:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);padding:10px 13px;margin-bottom:9px;font-size:0.78rem;line-height:1.7; }
+.concept-box.warn { border-left-color:var(--accent2);background:rgba(255,77,109,0.04); }
+.concept-box.good { border-left-color:var(--accent3);background:rgba(57,255,126,0.04); }
+.concept-box.purple { border-left-color:var(--accent5);background:rgba(167,139,250,0.04); }
+.concept-box h4 { font-size:0.72rem;font-weight:700;margin-bottom:4px;color:var(--accent); }
+.concept-box.warn h4 { color:var(--accent2); }
+.concept-box.good h4 { color:var(--accent3); }
+.concept-box.purple h4 { color:var(--accent5); }
+.concept-box p { color:var(--text2); }
+.concept-box code { color:var(--accent);background:rgba(0,229,255,0.08);padding:1px 5px;border-radius:3px;font-family:'Consolas',monospace; }
+
+/* PSEUDOCODE TOOLTIP */
+.tooltip-hint {
+  display: none;
+  margin-left: 14px;
+  background: rgba(26,37,64,0.95); color: var(--text2); font-size: 0.67rem;
+  padding: 2px 9px; border-radius: 5px; border: 1px solid var(--border-bright);
+  white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  font-family: 'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  font-style: italic; align-self: center;
+}
+.pseudo-line:hover .tooltip-hint { display: inline-block; }
+
+/* HISTORY TABLE */
+#history-container { max-height: 220px; overflow-y: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); background: rgba(4,6,12,0.85); }
+#history-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; font-family: 'Consolas','Courier New',monospace; }
+#history-table th { position: sticky; top: 0; background: #0b0e1a; padding: 6px 10px; color: var(--text2); text-align: left; border-bottom: 1px solid var(--border); font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.8px; }
+#history-table td { padding: 5px 10px; border-bottom: 1px solid rgba(26,32,53,0.6); cursor: pointer; color: var(--text2); }
+#history-table tr:hover td { background: rgba(0,229,255,0.06); color: var(--text); }
+#history-table tr.current-row td { background: rgba(0,229,255,0.12); color: var(--accent); }
+.mode-tabs { display:flex;gap:4px;margin-bottom:10px; }
+.mode-tab { flex:1;padding:7px;text-align:center;font-size:0.72rem;font-weight:700;cursor:pointer;border-radius:var(--radius-sm);border:1px solid var(--border);color:var(--text2);background:rgba(0,0,0,0.3);transition:all 0.2s; }
+.mode-tab.active { border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,0.08);box-shadow:0 0 12px var(--accent-glow); }
+.mode-tab.warn-tab.active { border-color:var(--accent2);color:var(--accent2);background:rgba(255,77,109,0.08);box-shadow:0 0 12px rgba(255,77,109,0.15); }
+
+/* NOTIF */
+.notif { position:fixed;bottom:22px;right:22px;background:linear-gradient(135deg,var(--accent),#0ea5e9);color:#000;padding:10px 18px;border-radius:18px;font-weight:700;font-size:0.77rem;z-index:999;transform:translateY(60px);opacity:0;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;box-shadow:0 4px 20px rgba(0,229,255,0.4); }
+.notif.show { transform:translateY(0);opacity:1; }
+
+/* NP PROOF SECTION */
+.proof-step { display:flex;gap:10px;margin-bottom:12px;align-items:flex-start; }
+.proof-num { width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--accent5),#7c3aed);color:#fff;font-weight:800;font-size:0.7rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;box-shadow:0 0 10px rgba(167,139,250,0.4); }
+.proof-content { flex:1;font-size:0.78rem;line-height:1.7;color:var(--text2); }
+.proof-content strong { color:var(--text); }
+.proof-content code { color:var(--accent4);background:rgba(255,183,0,0.08);padding:1px 5px;border-radius:3px;font-family:'Consolas',monospace;font-size:0.75rem; }
+
+/* COMPARISON */
+.compare-panels { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.compare-panel { background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px; }
+.compare-panel h4 { font-size:0.72rem;font-weight:700;margin-bottom:8px; }
+
+/* RESPONSIVE */
+@media (max-width:1100px) {
+  .main-container { flex-direction:column; }
+  .left-panel { width:100%;min-width:unset;border-right:none;border-bottom:1px solid var(--border); }
+}
+@media (max-width:700px) {
+  header { padding:8px 12px; }
+  .nav-tabs { width:100%;justify-content:center;margin-left:0; }
+  .author-badge { display:none; }
+  .compare-panels { grid-template-columns:1fr; }
+}
+
+::-webkit-scrollbar { width:5px;height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border-bright);border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Max<span>Cut</span></div>
+    <div class="subtitle">NP-Complete · Interactive Visualizer</div>
+  </div>
+  <div class="author-badge">
+    <div class="author-avatar">A</div>
+    <div>
+      <div class="author-name">Ahmed Al-Absi</div>
+      <div class="author-meta">Algorithms I · Canadian University Dubai · 2026</div>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showPage('visualizer')">Visualizer</div>
+    <div class="nav-tab" onclick="showPage('np')">NP-Complete Proof</div>
+    <div class="nav-tab" onclick="showPage('compare')">Comparison</div>
+    <div class="nav-tab" onclick="showPage('learn')">Learn</div>
+  </div>
+</header>
+
+<!-- ═══════ VISUALIZER PAGE ═══════ -->
+<div class="page active" id="page-visualizer">
+  <div class="left-panel">
+
+    <!-- GRAPH BUILDER -->
+    <div class="section">
+      <div class="section-header"><div class="dot"></div>Graph Builder</div>
+      <div class="section-body graph-input">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <label style="font-size:0.7rem;color:var(--text2);font-weight:600;margin:0;">Edges (one per line: u v)</label>
+          <button class="btn btn-secondary" style="font-size:0.68rem;padding:4px 10px;" onclick="document.getElementById('edge-input').value='';showNotif('Cleared!')">✕ Clear</button>
+        </div>
+        <textarea id="edge-input" placeholder="0 1&#10;1 2&#10;2 3&#10;3 0" style="min-height:110px;font-size:0.85rem;line-height:1.8;"></textarea>
+        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
+          <button class="btn btn-secondary" style="flex:1;font-size:0.72rem;border-color:rgba(0,229,255,0.3);color:var(--accent);background:rgba(0,229,255,0.06);" onclick="addEdgeFromInputs()">＋ Add Edge</button>
+          <input id="edge-u" type="number" min="0" placeholder="u" style="width:52px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Consolas',monospace;font-size:0.85rem;padding:4px 6px;text-align:center;outline:none;">
+          <input id="edge-v" type="number" min="0" placeholder="v" style="width:52px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Consolas',monospace;font-size:0.85rem;padding:4px 6px;text-align:center;outline:none;">
+        </div>
+        <label style="font-size:0.7rem;color:var(--text2);font-weight:600;margin-top:6px;">Quick Presets</label>
+        <div class="preset-grid">
+          <div class="preset-btn" onclick="loadPreset(0)">⬡ Cycle C4</div>
+          <div class="preset-btn" onclick="loadPreset(1)">★ Complete K4</div>
+          <div class="preset-btn" onclick="loadPreset(2)">⬡ Petersen</div>
+          <div class="preset-btn" onclick="loadPreset(3)">⬡ Bipartite</div>
+          <div class="preset-btn" onclick="loadPreset(4)">⬡ Triangle</div>
+          <div class="preset-btn" onclick="loadPreset(5)">⬡ Path P5</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALGORITHM MODE -->
+    <div class="section">
+      <div class="section-header"><div class="dot" style="background:var(--accent5);box-shadow:0 0 6px var(--accent5)"></div>Algorithm Mode</div>
+      <div class="section-body">
+        <div class="mode-tabs">
+          <div class="mode-tab active" id="mode-greedy" onclick="setMode('greedy')">🔍 Greedy Local Search</div>
+          <div class="mode-tab warn-tab" id="mode-brute" onclick="setMode('brute')">💥 Brute Force</div>
+        </div>
+        <div id="mode-desc" style="font-size:0.7rem;color:var(--text2);line-height:1.6;padding:6px 8px;background:rgba(0,0,0,0.2);border-radius:6px;border:1px solid var(--border);font-family:'Consolas',monospace;"></div>
+      </div>
+    </div>
+
+    <!-- SPEED -->
+    <div class="section">
+      <div class="section-header"><div class="dot" style="background:var(--accent3);box-shadow:0 0 6px var(--accent3)"></div>Playback Speed</div>
+      <div class="section-body">
+        <div class="speed-row">
+          <span style="font-size:0.68rem;color:var(--text2)">0.25×</span>
+          <input type="range" id="speed-slider" min="1" max="8" value="4" oninput="updateSpeed()">
+          <span style="font-size:0.68rem;color:var(--text2)">4×</span>
+          <span class="speed-val" id="speed-val">1×</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="section">
+      <div class="section-header"><div class="dot" style="background:var(--accent2);box-shadow:0 0 6px var(--accent2)"></div>Controls</div>
+      <div class="section-body" style="display:flex;flex-direction:column;gap:9px;">
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-build" onclick="buildSteps()">▶ Build Steps</button>
+          <button class="btn btn-secondary" id="btn-step" onclick="stepForward()" disabled>Step →</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btn-play" onclick="playAnim()" disabled>⏵ Play</button>
+          <button class="btn btn-secondary" id="btn-pause" onclick="pauseAnim()" disabled>⏸ Pause</button>
+          <button class="btn btn-danger" id="btn-reset" onclick="resetAll()">↺ Reset</button>
+        </div>
+        <div class="status-row">
+          <span class="step-counter" id="step-counter">Step 0 / 0</span>
+          <span class="status-badge status-idle" id="status-badge">IDLE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="section">
+      <div class="section-header"><div class="dot" style="background:var(--accent4);box-shadow:0 0 6px var(--accent4)"></div>Statistics</div>
+      <div class="section-body">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-val" id="stat-cut">0</div><div class="stat-label">Cut Size</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-ops">0</div><div class="stat-label">Operations</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-ssize">0</div><div class="stat-label">|S| Nodes</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-vssize">0</div><div class="stat-label">|V\S| Nodes</div></div>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="font-size:0.68rem;color:var(--text2);">Cut Quality (cut / |E|)</div>
+            <div id="approx-badge" style="display:none;padding:2px 8px;border-radius:10px;font-size:0.62rem;font-weight:700;font-family:'Consolas',monospace;"></div>
+          </div>
+          <div style="height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
+            <div id="quality-bar" style="height:100%;background:linear-gradient(90deg,var(--accent3),var(--accent));border-radius:4px;transition:width 0.4s ease;width:0%"></div>
+          </div>
+          <div id="quality-label" style="font-size:0.65rem;color:var(--text2);margin-top:4px;text-align:center;font-family:'Consolas',monospace;"></div>
+          <!-- Live approximation guarantee display -->
+          <div id="approx-guarantee" style="display:none;margin-top:8px;padding:7px 10px;border-radius:6px;border:1px solid rgba(57,255,126,0.3);background:rgba(57,255,126,0.06);font-size:0.68rem;font-family:'Consolas',monospace;color:var(--accent3);line-height:1.7;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="section">
+      <div class="section-header"><div class="dot" style="background:var(--text2);box-shadow:none"></div>Legend</div>
+      <div class="section-body">
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--set-s);box-shadow:0 0 6px var(--set-s)"></div>Set S (blue)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--set-vs);box-shadow:0 0 6px var(--set-vs)"></div>Set V\S (red)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--accent4)"></div>Flipping node</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--cut-edge);box-shadow:0 0 4px var(--cut-edge)"></div>Cut edge ✂</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--uncut-edge)"></div>Uncut edge</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end left-panel -->
+
+  <div class="right-panel">
+    <div id="viz-container">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="viz-title" style="margin-bottom:0;">Graph Visualization — Max-Cut Partitioning</div>
+        <div style="font-size:0.62rem;color:var(--text2);font-family:'Consolas',monospace;opacity:0.6;">✥ drag nodes to reposition</div>
+      </div>
+      <svg id="viz-svg" height="340"></svg>
+    </div>
+    <div class="section">
+      <div class="section-header"><div class="dot" style="background:var(--accent3)"></div>Pseudocode</div>
+      <div id="pseudo-container"></div>
+    </div>
+    <div class="section">
+      <div class="section-header"><div class="dot" style="background:var(--accent2)"></div>Step Explanation</div>
+      <div class="section-body"><div id="explanation">Press <strong>Build Steps</strong> to start the visualization.</div></div>
+    </div>
+    <div class="section">
+      <div class="section-header"><div class="dot"></div>Step History <span style="font-size:0.65rem;color:var(--text2);font-weight:400;margin-left:6px;">(click any row to jump)</span></div>
+      <div id="history-container">
+        <table id="history-table">
+          <thead><tr><th>#</th><th>Action</th><th>Cut</th><th>Ops</th></tr></thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ NP-COMPLETE PROOF PAGE ═══════ -->
+<div class="page" id="page-np" style="flex-direction:column;padding:20px;gap:14px;">
+  <div style="max-width:960px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
+
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>🔴 What is NP-Completeness?</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <p style="margin-bottom:12px;">A problem is <strong style="color:var(--accent2)">NP-Complete</strong> if it is both in NP and NP-Hard. This means it's one of the hardest problems in the class NP — if you could solve it efficiently, you could solve ALL NP problems efficiently.</p>
+        <svg viewBox="0 0 700 140" style="width:100%;max-width:700px;display:block;margin:0 auto 10px;" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="350" cy="70" rx="320" ry="60" fill="rgba(167,139,250,0.06)" stroke="rgba(167,139,250,0.3)" stroke-width="1.5"/>
+          <text x="350" y="22" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700" font-family="Consolas,monospace">NP (verifiable in polynomial time)</text>
+          <ellipse cx="350" cy="80" rx="220" ry="45" fill="rgba(255,183,0,0.06)" stroke="rgba(255,183,0,0.3)" stroke-width="1.5"/>
+          <text x="350" y="55" text-anchor="middle" fill="#ffb700" font-size="11" font-weight="700" font-family="Consolas,monospace">NP-Hard</text>
+          <ellipse cx="350" cy="85" rx="130" ry="32" fill="rgba(255,77,109,0.12)" stroke="rgba(255,77,109,0.5)" stroke-width="2"/>
+          <text x="350" y="81" text-anchor="middle" fill="#ff4d6d" font-size="12" font-weight="800" font-family="Consolas,monospace">NP-Complete</text>
+          <text x="350" y="97" text-anchor="middle" fill="#ff4d6d" font-size="10" font-family="Consolas,monospace">Max-Cut lives here</text>
+          <text x="80" y="90" text-anchor="middle" fill="rgba(167,139,250,0.6)" font-size="9" font-family="Consolas,monospace">Graph Isomorphism</text>
+          <text x="590" y="75" text-anchor="middle" fill="rgba(255,183,0,0.6)" font-size="9" font-family="Consolas,monospace">Halting Problem</text>
+        </svg>
+        <div class="concept-box purple"><h4>To prove NP-Completeness you need TWO things:</h4><p>1. Show the problem is <strong>in NP</strong> — given a solution, you can verify it quickly.<br>2. Show the problem is <strong>NP-Hard</strong> — reduce a known NP-Complete problem TO it in polynomial time.</p></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>✅ Step 1: Max-Cut is in NP</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <div class="proof-step">
+          <div class="proof-num">1</div>
+          <div class="proof-content"><strong>Certificate:</strong> A partition of vertices into two sets S and V\S.</div>
+        </div>
+        <div class="proof-step">
+          <div class="proof-num">2</div>
+          <div class="proof-content"><strong>Verifier:</strong> Given a certificate (S, V\S), count all edges with one endpoint in S and one in V\S. If count ≥ k, accept. This takes <code>O(|E|)</code> time — polynomial.</div>
+        </div>
+        <div class="proof-step">
+          <div class="proof-num">3</div>
+          <div class="proof-content"><strong>Conclusion:</strong> Since we can verify any solution in polynomial time, Max-Cut ∈ NP. ✓</div>
+        </div>
+        <svg viewBox="0 0 680 100" style="width:100%;max-width:680px;display:block;margin:10px auto 0;" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="20" width="140" height="60" rx="8" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.3)" stroke-width="1.5"/>
+          <text x="80" y="47" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="Consolas,monospace">Certificate</text>
+          <text x="80" y="64" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">Partition S, V\S</text>
+          <line x1="150" y1="50" x2="195" y2="50" stroke="var(--text2)" stroke-width="1.5" marker-end="url(#np-arr)"/>
+          <rect x="200" y="20" width="180" height="60" rx="8" fill="rgba(255,183,0,0.08)" stroke="rgba(255,183,0,0.3)" stroke-width="1.5"/>
+          <text x="290" y="44" text-anchor="middle" fill="var(--accent4)" font-size="11" font-weight="700" font-family="Consolas,monospace">Verifier O(|E|)</text>
+          <text x="290" y="60" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">Count crossing edges</text>
+          <text x="290" y="73" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">Check ≥ k</text>
+          <line x1="380" y1="50" x2="425" y2="50" stroke="var(--text2)" stroke-width="1.5" marker-end="url(#np-arr)"/>
+          <rect x="430" y="20" width="120" height="60" rx="8" fill="rgba(57,255,126,0.1)" stroke="rgba(57,255,126,0.4)" stroke-width="1.5"/>
+          <text x="490" y="47" text-anchor="middle" fill="var(--accent3)" font-size="11" font-weight="700" font-family="Consolas,monospace">ACCEPT / REJECT</text>
+          <text x="490" y="62" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">Polynomial time ✓</text>
+          <defs><marker id="np-arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--text2)"/></marker></defs>
+        </svg>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>🔁 Step 2: Reduction from NAE-3-SAT → Max-Cut</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <div class="concept-box purple"><h4>What is NAE-3-SAT?</h4><p>Not-All-Equal 3-SAT: given a 3-CNF formula, is there an assignment where in every clause, the three literals are NOT all equal (not all true and not all false)? This is a known NP-Complete problem.</p></div>
+
+        <div style="font-size:0.8rem;font-weight:700;color:var(--text);margin:10px 0 6px;">Construction: NAE-3-SAT → Max-Cut</div>
+        <div class="proof-step">
+          <div class="proof-num">1</div>
+          <div class="proof-content"><strong>Variables:</strong> For each variable xᵢ in the formula, create two nodes: <code>xᵢ</code> (true literal) and <code>¬xᵢ</code> (false literal). Add an edge between them — this forces them into opposite sides of the cut.</div>
+        </div>
+        <div class="proof-step">
+          <div class="proof-num">2</div>
+          <div class="proof-content"><strong>Clauses:</strong> For each clause (a ∨ b ∨ c), add edges between all pairs: a-b, b-c, a-c. This creates a triangle on the three literal nodes of the clause.</div>
+        </div>
+        <div class="proof-step">
+          <div class="proof-num">3</div>
+          <div class="proof-content"><strong>Threshold:</strong> Set k = (number of variable edges) + (number of clauses × 2). A valid NAE-3-SAT assignment corresponds to a cut of exactly this size.</div>
+        </div>
+        <div class="proof-step">
+          <div class="proof-num">4</div>
+          <div class="proof-content"><strong>Polynomiality:</strong> The construction adds at most <code>O(n)</code> variable edges and <code>O(m)</code> clause triangles = <code>O(n + m)</code> total — polynomial in input size.</div>
+        </div>
+
+        <!-- Reduction diagram -->
+        <div style="font-size:0.75rem;color:var(--text2);margin:12px 0 6px;font-family:'Consolas',monospace;">Example: clause (x₁ ∨ x₂ ∨ ¬x₃)</div>
+        <svg viewBox="0 0 700 200" style="width:100%;max-width:700px;display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="red-arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"/></marker>
+          </defs>
+          <!-- NAE-3-SAT side -->
+          <rect x="10" y="10" width="280" height="180" rx="10" fill="rgba(167,139,250,0.05)" stroke="rgba(167,139,250,0.3)" stroke-width="1.5"/>
+          <text x="150" y="30" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700" font-family="Consolas,monospace">NAE-3-SAT instance</text>
+          <text x="150" y="55" text-anchor="middle" fill="var(--text2)" font-size="13" font-family="Consolas,monospace">(x₁ ∨ x₂ ∨ ¬x₃)</text>
+          <text x="150" y="80" text-anchor="middle" fill="var(--text2)" font-size="10" font-family="Consolas,monospace">NAE-satisfiable if</text>
+          <text x="150" y="95" text-anchor="middle" fill="var(--text2)" font-size="10" font-family="Consolas,monospace">not all same truth value</text>
+          <text x="150" y="130" text-anchor="middle" fill="var(--accent3)" font-size="10" font-family="Consolas,monospace">e.g. x₁=T, x₂=F, x₃=T</text>
+          <text x="150" y="148" text-anchor="middle" fill="var(--accent3)" font-size="10" font-family="Consolas,monospace">→ (T, F, F) ✓ not all equal</text>
+          <!-- Arrow -->
+          <line x1="295" y1="100" x2="355" y2="100" stroke="var(--accent2)" stroke-width="2" marker-end="url(#red-arr)"/>
+          <text x="325" y="92" text-anchor="middle" fill="var(--accent2)" font-size="10" font-family="Consolas,monospace">reduce</text>
+          <!-- Max-Cut side -->
+          <rect x="360" y="10" width="330" height="180" rx="10" fill="rgba(0,229,255,0.05)" stroke="rgba(0,229,255,0.3)" stroke-width="1.5"/>
+          <text x="525" y="30" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="Consolas,monospace">Max-Cut instance</text>
+          <!-- Variable nodes -->
+          <circle cx="420" cy="80" r="18" fill="rgba(0,229,255,0.15)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="420" y="85" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="Consolas,monospace">x₁</text>
+          <circle cx="525" cy="80" r="18" fill="rgba(255,77,109,0.15)" stroke="var(--accent2)" stroke-width="2"/>
+          <text x="525" y="85" text-anchor="middle" fill="var(--accent2)" font-size="11" font-weight="700" font-family="Consolas,monospace">x₂</text>
+          <circle cx="630" cy="80" r="18" fill="rgba(0,229,255,0.15)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="630" y="85" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="700" font-family="Consolas,monospace">¬x₃</text>
+          <!-- Triangle edges (clause) -->
+          <line x1="438" y1="80" x2="507" y2="80" stroke="var(--accent3)" stroke-width="2"/>
+          <line x1="543" y1="80" x2="612" y2="80" stroke="var(--accent3)" stroke-width="2"/>
+          <line x1="435" y1="65" x2="618" y2="65" stroke="var(--accent3)" stroke-width="2"/>
+          <text x="525" y="58" text-anchor="middle" fill="var(--accent3)" font-size="9" font-family="Consolas,monospace">clause triangle</text>
+          <!-- Set labels -->
+          <text x="420" y="115" text-anchor="middle" fill="var(--accent)" font-size="9" font-family="Consolas,monospace">Set S (T)</text>
+          <text x="525" y="115" text-anchor="middle" fill="var(--accent2)" font-size="9" font-family="Consolas,monospace">Set V\S (F)</text>
+          <text x="630" y="115" text-anchor="middle" fill="var(--accent2)" font-size="9" font-family="Consolas,monospace">Set V\S (F)</text>
+          <text x="525" y="150" text-anchor="middle" fill="var(--accent3)" font-size="10" font-family="Consolas,monospace">Cut = 2 edges ✓ (not all same side)</text>
+        </svg>
+
+        <div class="concept-box good" style="margin-top:12px;"><h4>✓ Forward Direction (YES → YES)</h4><p>If the NAE-3-SAT formula is satisfiable, place true literals in S and false literals in V\S. Since NAE means not all equal, each clause has at least one literal in each set → at least 2 edges of the triangle cross the cut. Total cut ≥ k.</p></div>
+        <div class="concept-box good"><h4>✓ Backward Direction (YES → YES)</h4><p>If the Max-Cut has size ≥ k, each clause triangle must contribute at least 2 crossing edges. This means at least one literal is in S and one in V\S → they have different truth values → clause is NAE-satisfied. The variable edges ensure xᵢ and ¬xᵢ are on opposite sides (consistent assignment).</p></div>
+        <div class="concept-box purple"><h4>✓ Polynomiality</h4><p>Construction creates n variable edges (one per variable) and 3m clause edges (triangle per clause). Total O(n + m) edges and O(n + m) nodes — clearly polynomial in input size.</p></div>
+        <div class="concept-box warn"><h4>∴ Conclusion: Max-Cut is NP-Complete</h4><p>Max-Cut ∈ NP (verified above) AND NAE-3-SAT ≤ₚ Max-Cut (reduction above). Therefore Max-Cut is NP-Complete. No polynomial-time algorithm is known unless P = NP.</p></div>
+      </div>
+    </div>
+
+    <!-- INTERACTIVE REDUCTION BUILDER -->
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>🔬 Interactive Reduction Builder — NAE-3-SAT → Max-Cut</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <p style="margin-bottom:12px;">Type a NAE-3-SAT formula and watch the Max-Cut graph get built automatically. Each variable gets two nodes, each clause becomes a triangle of edges.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+          <label style="font-size:0.7rem;color:var(--text2);font-weight:600;">Variables (comma separated, e.g: x1,x2,x3)</label>
+          <input id="nae-vars" type="text" value="x1,x2,x3" style="background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Consolas',monospace;font-size:0.82rem;padding:7px 10px;outline:none;width:100%;">
+          <label style="font-size:0.7rem;color:var(--text2);font-weight:600;">Clauses (one per line, 3 literals each, use ~ for NOT, e.g: x1,x2,~x3)</label>
+          <textarea id="nae-clauses" style="background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Consolas',monospace;font-size:0.82rem;padding:7px 10px;outline:none;width:100%;min-height:80px;resize:vertical;">x1,x2,~x3
+~x1,x2,x3
+x1,~x2,x3</textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" style="font-size:0.72rem;" onclick="buildReduction()">🔬 Build Graph</button>
+            <button class="btn btn-secondary" style="font-size:0.72rem;" onclick="loadNAEPreset(0)">Example 1</button>
+            <button class="btn btn-secondary" style="font-size:0.72rem;" onclick="loadNAEPreset(1)">Example 2</button>
+            <button class="btn btn-warn" style="font-size:0.72rem;" onclick="sendReductionToVisualizer()">→ Open in Visualizer</button>
+          </div>
+        </div>
+        <!-- Reduction result -->
+        <div id="reduction-result" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
+            <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:10px;">
+              <div style="font-size:0.7rem;font-weight:700;color:var(--accent5);margin-bottom:6px;">NAE-3-SAT Formula</div>
+              <div id="reduction-formula" style="font-size:0.72rem;color:var(--text2);font-family:'Consolas',monospace;line-height:1.8;"></div>
+            </div>
+            <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:10px;">
+              <div style="font-size:0.7rem;font-weight:700;color:var(--accent);margin-bottom:6px;">Constructed Max-Cut Graph</div>
+              <div id="reduction-graph-info" style="font-size:0.72rem;color:var(--text2);font-family:'Consolas',monospace;line-height:1.8;"></div>
+            </div>
+          </div>
+          <svg id="reduction-svg" style="width:100%;display:block;background:rgba(0,0,0,0.3);border-radius:8px;border:1px solid var(--border);"></svg>
+          <div id="reduction-explanation" style="margin-top:10px;padding:10px;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.25);border-radius:8px;font-size:0.72rem;color:var(--text2);line-height:1.8;font-family:'Consolas',monospace;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════ COMPARISON PAGE ═══════ -->
+<div class="page" id="page-compare" style="flex-direction:column;padding:20px;gap:14px;">
+  <div style="max-width:960px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
+
+    <!-- LIVE SIDE BY SIDE COMPARISON -->
+    <div class="section">
+      <div class="section-header"><div class="dot" style="background:var(--accent4);box-shadow:0 0 6px var(--accent4)"></div>Live Side-by-Side Comparison</div>
+      <div class="section-body" style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:0.72rem;color:var(--text2);">Run both algorithms on the same graph simultaneously and compare results.</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" style="font-size:0.7rem;" onclick="loadComparePreset(0)">⬡ Cycle C4</button>
+            <button class="btn btn-secondary" style="font-size:0.7rem;" onclick="loadComparePreset(1)">★ K4</button>
+            <button class="btn btn-secondary" style="font-size:0.7rem;" onclick="loadComparePreset(2)">⬡ Bipartite</button>
+            <button class="btn btn-secondary" style="font-size:0.7rem;" onclick="loadComparePreset(3)">⬡ Path P5</button>
+          </div>
+          <button class="btn btn-primary" style="font-size:0.7rem;" onclick="runComparison()">▶ Run Both</button>
+          <button class="btn btn-danger" style="font-size:0.7rem;" onclick="resetComparison()">↺ Reset</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="compare-panels-live">
+          <!-- Greedy panel -->
+          <div style="background:rgba(57,255,126,0.04);border:1px solid rgba(57,255,126,0.2);border-radius:8px;padding:10px;">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--accent3);margin-bottom:8px;">🔍 Greedy Local Search</div>
+            <svg id="compare-svg-greedy" height="180" style="width:100%;display:block;background:rgba(0,0,0,0.3);border-radius:6px;"></svg>
+            <div id="compare-info-greedy" style="margin-top:8px;font-size:0.7rem;color:var(--text2);font-family:'Consolas',monospace;min-height:40px;"></div>
+          </div>
+          <!-- Brute force panel -->
+          <div style="background:rgba(255,77,109,0.04);border:1px solid rgba(255,77,109,0.2);border-radius:8px;padding:10px;">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--accent2);margin-bottom:8px;">💥 Brute Force (Exact)</div>
+            <svg id="compare-svg-brute" height="180" style="width:100%;display:block;background:rgba(0,0,0,0.3);border-radius:6px;"></svg>
+            <div id="compare-info-brute" style="margin-top:8px;font-size:0.7rem;color:var(--text2);font-family:'Consolas',monospace;min-height:40px;"></div>
+          </div>
+        </div>
+        <!-- Result summary -->
+        <div id="compare-result" style="display:none;padding:12px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;font-size:0.75rem;font-family:'Consolas',monospace;line-height:1.8;"></div>
+        <!-- Step count comparison bars -->
+        <div id="compare-bars" style="display:none;margin-top:10px;padding:12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text2);margin-bottom:10px;letter-spacing:0.8px;text-transform:uppercase;">Operations Comparison</div>
+          <div style="margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--accent3);margin-bottom:3px;font-family:'Consolas',monospace;">
+              <span>🔍 Greedy Local Search</span><span id="bar-greedy-val"></span>
+            </div>
+            <div style="height:10px;background:rgba(255,255,255,0.05);border-radius:5px;overflow:hidden;">
+              <div id="bar-greedy" style="height:100%;background:linear-gradient(90deg,var(--accent3),#00e5ff);border-radius:5px;transition:width 0.6s ease;width:0%;"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--accent2);margin-bottom:3px;font-family:'Consolas',monospace;">
+              <span>💥 Brute Force</span><span id="bar-brute-val"></span>
+            </div>
+            <div style="height:10px;background:rgba(255,255,255,0.05);border-radius:5px;overflow:hidden;">
+              <div id="bar-brute" style="height:100%;background:linear-gradient(90deg,var(--accent2),#ff8855);border-radius:5px;transition:width 0.6s ease;width:0%;"></div>
+            </div>
+          </div>
+          <div id="speedup-label" style="margin-top:8px;font-size:0.72rem;color:var(--accent4);font-family:'Consolas',monospace;text-align:center;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>⚖️ Brute Force vs Greedy Local Search</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <div class="compare-panels">
+          <div class="compare-panel">
+            <h4 style="color:var(--accent2)">💥 Brute Force</h4>
+            <div style="font-size:0.75rem;color:var(--text2);line-height:1.8;">
+              <div>• Try ALL 2ⁿ partitions</div>
+              <div>• Guarantees optimal solution</div>
+              <div>• Time: <strong style="color:var(--accent2)">O(2ⁿ · |E|)</strong></div>
+              <div>• Usable up to ~20 nodes</div>
+              <div>• Completely impractical for large graphs</div>
+            </div>
+          </div>
+          <div class="compare-panel">
+            <h4 style="color:var(--accent3)">🔍 Greedy Local Search</h4>
+            <div style="font-size:0.75rem;color:var(--text2);line-height:1.8;">
+              <div>• Start random, flip vertices greedily</div>
+              <div>• Guaranteed ≥ |E|/2 cut (0.5-approx)</div>
+              <div>• Time: <strong style="color:var(--accent3)">O(|V| · |E|)</strong></div>
+              <div>• Practical for large graphs</div>
+              <div>• May miss global optimum</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Growth chart -->
+        <div style="margin-top:14px;">
+          <div style="font-size:0.72rem;color:var(--text2);margin-bottom:8px;font-family:'Consolas',monospace;">Operations growth comparison</div>
+          <canvas id="growth-chart" style="width:100%;height:200px;display:block;"></canvas>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;">
+            <div style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text2);"><div style="width:18px;height:3px;background:var(--accent2);border-radius:2px;"></div>Brute Force O(2ⁿ·|E|)</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text2);"><div style="width:18px;height:3px;background:var(--accent3);border-radius:2px;"></div>Local Search O(|V|·|E|)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>📐 0.5-Approximation Guarantee Proof</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <div class="proof-step">
+          <div class="proof-num">1</div>
+          <div class="proof-content"><strong>Local Maximum Definition:</strong> A partition is a local maximum if no single vertex flip increases the cut size.</div>
+        </div>
+        <div class="proof-step">
+          <div class="proof-num">2</div>
+          <div class="proof-content"><strong>Key Observation:</strong> At a local maximum, for every vertex v, moving v to the other side does NOT increase the cut. This means: the number of edges from v crossing the cut ≥ edges from v NOT crossing the cut.</div>
+        </div>
+        <div class="proof-step">
+          <div class="proof-num">3</div>
+          <div class="proof-content"><strong>Formal argument:</strong> For each vertex v with degree d(v): at least d(v)/2 edges must cross the cut (otherwise flipping v would improve). Summing over all vertices: <code>2|CUT| ≥ Σ d(v)/2 · 2 = |E|</code></div>
+        </div>
+        <div class="proof-step">
+          <div class="proof-num">4</div>
+          <div class="proof-content"><strong>Conclusion:</strong> <code>|CUT| ≥ |E|/2</code>. Since the optimal cut OPT ≤ |E|, we get <code>|CUT| ≥ OPT/2</code> — a 0.5-approximation! ✓</div>
+        </div>
+        <div class="concept-box good"><h4>✓ What this means practically</h4><p>The greedy local search always finds a cut that is AT LEAST half the maximum possible. For example, if the optimal cut has 100 edges, greedy finds at least 50. The famous Goemans-Williamson algorithm achieves 0.878 using semidefinite programming, but local search is much simpler and still provides this guarantee.</p></div>
+        <div class="concept-box warn"><h4>✗ Counterexample: Local ≠ Global Optimum</h4><p>Consider a cycle C₄: nodes 0-1-2-3-0. Local search might find cut {0,2} vs {1,3} = 4 edges (optimal). But if it starts with {0,1} vs {2,3} = 2 edges and no flip helps locally, it could stop at a non-optimal local maximum. This shows greedy can miss the global optimum.</p></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════ LEARN PAGE ═══════ -->
+<div class="page" id="page-learn" style="flex-direction:column;padding:20px;gap:14px;">
+  <div style="max-width:960px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
+
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>📖 What is Max-Cut?</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <p style="margin-bottom:12px;">Given an undirected graph G = (V, E), partition the vertices into two sets S and V\S to <strong>maximize</strong> the number of edges with one endpoint in each set. These edges are called <strong style="color:var(--accent3)">cut edges</strong>.</p>
+        <svg viewBox="0 0 700 160" style="width:100%;max-width:700px;display:block;margin:0 auto 12px;" xmlns="http://www.w3.org/2000/svg">
+          <!-- Bad cut -->
+          <rect x="10" y="10" width="310" height="140" rx="8" fill="rgba(255,77,109,0.05)" stroke="rgba(255,77,109,0.25)" stroke-width="1.5"/>
+          <text x="165" y="30" text-anchor="middle" fill="var(--accent2)" font-size="11" font-weight="700" font-family="Consolas,monospace">Bad Cut — 2 edges</text>
+          <circle cx="80" cy="90" r="18" fill="rgba(0,229,255,0.2)" stroke="var(--set-s)" stroke-width="2"/>
+          <text x="80" y="95" text-anchor="middle" fill="var(--set-s)" font-size="11" font-weight="700" font-family="Consolas,monospace">A</text>
+          <circle cx="155" cy="60" r="18" fill="rgba(0,229,255,0.2)" stroke="var(--set-s)" stroke-width="2"/>
+          <text x="155" y="65" text-anchor="middle" fill="var(--set-s)" font-size="11" font-weight="700" font-family="Consolas,monospace">B</text>
+          <circle cx="230" cy="90" r="18" fill="rgba(255,77,109,0.2)" stroke="var(--set-vs)" stroke-width="2"/>
+          <text x="230" y="95" text-anchor="middle" fill="var(--set-vs)" font-size="11" font-weight="700" font-family="Consolas,monospace">C</text>
+          <circle cx="155" cy="120" r="18" fill="rgba(255,77,109,0.2)" stroke="var(--set-vs)" stroke-width="2"/>
+          <text x="155" y="125" text-anchor="middle" fill="var(--set-vs)" font-size="11" font-weight="700" font-family="Consolas,monospace">D</text>
+          <line x1="92" y1="82" x2="143" y2="68" stroke="var(--uncut-edge)" stroke-width="2"/>
+          <line x1="167" y1="68" x2="218" y2="82" stroke="var(--cut-edge)" stroke-width="2.5"/>
+          <line x1="218" y1="98" x2="167" y2="112" stroke="var(--uncut-edge)" stroke-width="2"/>
+          <line x1="92" y1="98" x2="143" y2="112" stroke="var(--cut-edge)" stroke-width="2.5"/>
+          <text x="165" y="150" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">S={A,B} V\S={C,D} Cut=2</text>
+          <!-- Good cut -->
+          <rect x="380" y="10" width="310" height="140" rx="8" fill="rgba(57,255,126,0.05)" stroke="rgba(57,255,126,0.25)" stroke-width="1.5"/>
+          <text x="535" y="30" text-anchor="middle" fill="var(--accent3)" font-size="11" font-weight="700" font-family="Consolas,monospace">Good Cut — 4 edges ✓</text>
+          <circle cx="450" cy="90" r="18" fill="rgba(0,229,255,0.2)" stroke="var(--set-s)" stroke-width="2"/>
+          <text x="450" y="95" text-anchor="middle" fill="var(--set-s)" font-size="11" font-weight="700" font-family="Consolas,monospace">A</text>
+          <circle cx="525" cy="60" r="18" fill="rgba(255,77,109,0.2)" stroke="var(--set-vs)" stroke-width="2"/>
+          <text x="525" y="65" text-anchor="middle" fill="var(--set-vs)" font-size="11" font-weight="700" font-family="Consolas,monospace">B</text>
+          <circle cx="600" cy="90" r="18" fill="rgba(0,229,255,0.2)" stroke="var(--set-s)" stroke-width="2"/>
+          <text x="600" y="95" text-anchor="middle" fill="var(--set-s)" font-size="11" font-weight="700" font-family="Consolas,monospace">C</text>
+          <circle cx="525" cy="120" r="18" fill="rgba(255,77,109,0.2)" stroke="var(--set-vs)" stroke-width="2"/>
+          <text x="525" y="125" text-anchor="middle" fill="var(--set-vs)" font-size="11" font-weight="700" font-family="Consolas,monospace">D</text>
+          <line x1="462" y1="82" x2="513" y2="68" stroke="var(--cut-edge)" stroke-width="2.5"/>
+          <line x1="537" y1="68" x2="588" y2="82" stroke="var(--cut-edge)" stroke-width="2.5"/>
+          <line x1="588" y1="98" x2="537" y2="112" stroke="var(--cut-edge)" stroke-width="2.5"/>
+          <line x1="462" y1="98" x2="513" y2="112" stroke="var(--cut-edge)" stroke-width="2.5"/>
+          <text x="535" y="150" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">S={A,C} V\S={B,D} Cut=4 ✓</text>
+        </svg>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div style="background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:800;color:var(--accent);font-family:'Consolas',monospace;">NP-Complete</div><div style="font-size:0.68rem;color:var(--text2);margin-top:3px;">No poly-time exact algorithm known</div></div>
+          <div style="background:rgba(57,255,126,0.06);border:1px solid rgba(57,255,126,0.2);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:800;color:var(--accent3);font-family:'Consolas',monospace;">0.878 approx</div><div style="font-size:0.68rem;color:var(--text2);margin-top:3px;">Best known: Goemans-Williamson</div></div>
+          <div style="background:rgba(255,183,0,0.06);border:1px solid rgba(255,183,0,0.2);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:1.1rem;font-weight:800;color:var(--accent4);font-family:'Consolas',monospace;">0.5 approx</div><div style="font-size:0.68rem;color:var(--text2);margin-top:3px;">Simple greedy local search</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>🧠 Why Greedy? Design Paradigm Justification</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <p style="margin-bottom:12px;">Max-Cut uses the <strong style="color:var(--accent3)">Greedy Local Search</strong> paradigm. Here is why this paradigm fits, and why other paradigms do not.</p>
+        <div class="concept-box good">
+          <h4>✓ Why Greedy Local Search fits Max-Cut</h4>
+          <p>The greedy choice is: if moving one vertex to the other side increases the cut, move it. This is locally optimal and provably moves toward a better solution. Each flip strictly increases the cut size, so the algorithm always terminates. At a local maximum, the 0.5-approximation guarantee holds.</p>
+        </div>
+        <div class="concept-box warn">
+          <h4>✗ Why Dynamic Programming does NOT fit</h4>
+          <p>Dynamic Programming requires <strong>optimal substructure</strong> — the optimal solution to the full problem must be built from optimal solutions to subproblems. Max-Cut does not have this property. The best cut for a subgraph tells us nothing reliable about the best cut for the full graph, because adding more nodes changes which partition is optimal in unpredictable ways.</p>
+        </div>
+        <div class="concept-box warn">
+          <h4>✗ Why Divide and Conquer does NOT fit</h4>
+          <p>Divide and Conquer splits the problem into independent subproblems, solves each, then combines results. For Max-Cut, if we split the graph into two halves and find the best cut for each half independently, we cannot combine them into the best cut for the whole graph — the two halves interact through edges that connect them, and those cross-edges are ignored when solving independently.</p>
+        </div>
+        <div class="concept-box purple">
+          <h4>✓ Design Summary</h4>
+          <p>
+            <strong>Paradigm:</strong> Greedy Local Search<br>
+            <strong>Greedy choice:</strong> flip a vertex if it strictly increases the cut<br>
+            <strong>Termination:</strong> each flip increases cut by ≥ 1, cut ≤ |E|, so at most |E| flips<br>
+            <strong>Correctness:</strong> at local maximum, cut ≥ |E|/2 (0.5-approximation)<br>
+            <strong>Time complexity:</strong> O(|V| · |E|) — polynomial
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>🔍 Greedy Local Search Algorithm</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <div class="concept-box"><h4>Algorithm Steps</h4><p>1. Randomly assign each vertex to S or V\S.<br>2. For each vertex v: compute gain = (edges from v NOT crossing) - (edges from v crossing).<br>3. If gain > 0, flip v to the other side (this increases cut size by gain).<br>4. Repeat until no vertex can be flipped to improve the cut.<br>5. Return the current partition — this is a local maximum.</p></div>
+        <div class="concept-box good"><h4>✓ Why it always terminates</h4><p>Each flip strictly increases the cut size. Since the cut size is bounded above by |E|, the algorithm terminates in at most |E| flips. Total time: O(|V| · |E|).</p></div>
+        <div class="concept-box warn"><h4>✗ Real-world applications</h4><p><strong>Circuit design:</strong> Minimize wire crossings between chips.<br><strong>Physics:</strong> Spin glass models — minimize energy of magnetic interactions.<br><strong>Network design:</strong> Partition network for load balancing.<br><strong>VLSI layout:</strong> Split components across layers.</p></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>💥 Brute Force Algorithm</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <div class="concept-box warn"><h4>How it works</h4><p>Enumerate all 2ⁿ possible subsets S of V. For each subset, count how many edges have exactly one endpoint in S. Return the subset with maximum count. Guaranteed optimal but exponential time.</p></div>
+        <svg viewBox="0 0 700 120" style="width:100%;max-width:700px;display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg">
+          <text x="10" y="18" fill="var(--text2)" font-size="11" font-weight="700" font-family="Consolas,monospace">n=3: All 2³=8 partitions to check</text>
+          <rect x="10" y="28" width="70" height="35" rx="5" fill="rgba(255,77,109,0.08)" stroke="rgba(255,77,109,0.3)" stroke-width="1"/>
+          <text x="45" y="45" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">∅</text>
+          <text x="45" y="56" text-anchor="middle" fill="var(--text2)" font-size="8" font-family="Consolas,monospace">cut=0</text>
+          <rect x="90" y="28" width="70" height="35" rx="5" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.2)" stroke-width="1"/>
+          <text x="125" y="45" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">{0}</text>
+          <text x="125" y="56" text-anchor="middle" fill="var(--text2)" font-size="8" font-family="Consolas,monospace">cut=2</text>
+          <rect x="170" y="28" width="70" height="35" rx="5" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.2)" stroke-width="1"/>
+          <text x="205" y="45" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">{1}</text>
+          <text x="205" y="56" text-anchor="middle" fill="var(--text2)" font-size="8" font-family="Consolas,monospace">cut=2</text>
+          <rect x="250" y="28" width="70" height="35" rx="5" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.2)" stroke-width="1"/>
+          <text x="285" y="45" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">{2}</text>
+          <text x="285" y="56" text-anchor="middle" fill="var(--text2)" font-size="8" font-family="Consolas,monospace">cut=2</text>
+          <rect x="330" y="28" width="70" height="35" rx="5" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.2)" stroke-width="1"/>
+          <text x="365" y="45" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">{0,1}</text>
+          <text x="365" y="56" text-anchor="middle" fill="var(--text2)" font-size="8" font-family="Consolas,monospace">cut=2</text>
+          <rect x="410" y="28" width="70" height="35" rx="5" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.2)" stroke-width="1"/>
+          <text x="445" y="45" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">{0,2}</text>
+          <text x="445" y="56" text-anchor="middle" fill="var(--text2)" font-size="8" font-family="Consolas,monospace">cut=2</text>
+          <rect x="490" y="28" width="70" height="35" rx="5" fill="rgba(57,255,126,0.12)" stroke="rgba(57,255,126,0.4)" stroke-width="2"/>
+          <text x="525" y="45" text-anchor="middle" fill="var(--accent3)" font-size="9" font-weight="700" font-family="Consolas,monospace">{1,2} ✓</text>
+          <text x="525" y="56" text-anchor="middle" fill="var(--accent3)" font-size="8" font-family="Consolas,monospace">cut=2 BEST</text>
+          <rect x="570" y="28" width="70" height="35" rx="5" fill="rgba(255,77,109,0.08)" stroke="rgba(255,77,109,0.3)" stroke-width="1"/>
+          <text x="605" y="45" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="Consolas,monospace">{0,1,2}</text>
+          <text x="605" y="56" text-anchor="middle" fill="var(--text2)" font-size="8" font-family="Consolas,monospace">cut=0</text>
+          <text x="350" y="105" text-anchor="middle" fill="var(--accent2)" font-size="10" font-weight="700" font-family="Consolas,monospace">For n=30: 2³⁰ = 1,073,741,824 partitions — completely impractical!</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- WORKED EXAMPLE -->
+    <div class="section">
+      <div class="collapsible-header open" onclick="toggleCollapsible(this)"><span>🔍 Worked Example: Greedy on Cycle C4</span><span class="collapsible-arrow">▶</span></div>
+      <div class="collapsible-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+          <p>Graph: <strong style="color:var(--accent)">Cycle C4</strong> — nodes {0,1,2,3}, edges {0-1, 1-2, 2-3, 3-0}. Optimal cut = 4 edges (alternating partition). Let's trace greedy local search step by step.</p>
+          <button class="btn btn-primary" style="font-size:0.7rem;white-space:nowrap;" onclick="tryInVisualizer('0 1\n1 2\n2 3\n3 0','greedy')">▶ Try C4 in Visualizer</button>
+        </div>
+
+        <!-- Step by step worked example SVGs -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+
+          <!-- Step 1 -->
+          <div style="background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;padding:12px;">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--accent4);margin-bottom:8px;">Step 1 — Initialize: Assign alternating sides</div>
+            <div style="display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:center;">
+              <svg viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="35" r="18" fill="rgba(0,229,255,0.2)" stroke="var(--set-s)" stroke-width="2"/>
+                <text x="100" y="40" text-anchor="middle" fill="var(--set-s)" font-size="12" font-weight="700" font-family="Consolas,monospace">0</text>
+                <text x="100" y="66" text-anchor="middle" fill="var(--set-s)" font-size="9" font-family="Consolas,monospace">S</text>
+                <circle cx="168" cy="95" r="18" fill="rgba(255,77,109,0.2)" stroke="var(--set-vs)" stroke-width="2"/>
+                <text x="168" y="100" text-anchor="middle" fill="var(--set-vs)" font-size="12" font-weight="700" font-family="Consolas,monospace">1</text>
+                <text x="168" y="126" text-anchor="middle" fill="var(--set-vs)" font-size="9" font-family="Consolas,monospace">V\S</text>
+                <circle cx="100" cy="148" r="18" fill="rgba(0,229,255,0.2)" stroke="var(--set-s)" stroke-width="2"/>
+                <text x="100" y="153" text-anchor="middle" fill="var(--set-s)" font-size="12" font-weight="700" font-family="Consolas,monospace">2</text>
+                <text x="100" y="174" text-anchor="middle" fill="var(--set-s)" font-size="9" font-family="Consolas,monospace">S</text>
+                <circle cx="32" cy="95" r="18" fill="rgba(255,77,109,0.2)" stroke="var(--set-vs)" stroke-width="2"/>
+                <text x="32" y="100" text-anchor="middle" fill="var(--set-vs)" font-size="12" font-weight="700" font-family="Consolas,monospace">3</text>
+                <text x="32" y="126" text-anchor="middle" fill="var(--set-vs)" font-size="9" font-family="Consolas,monospace">V\S</text>
+                <line x1="115" y1="48" x2="153" y2="80" stroke="var(--cut-edge)" stroke-width="2"/>
+                <line x1="168" y1="113" x2="118" y2="136" stroke="var(--cut-edge)" stroke-width="2"/>
+                <line x1="82" y1="148" x2="48" y2="112" stroke="var(--cut-edge)" stroke-width="2"/>
+                <line x1="32" y1="77" x2="83" y2="48" stroke="var(--cut-edge)" stroke-width="2"/>
+              </svg>
+              <div style="font-size:0.75rem;color:var(--text2);line-height:1.8;">
+                S = {0, 2} &nbsp;|&nbsp; V\S = {1, 3}<br>
+                Cut edges: 0-1 ✂, 1-2 ✂, 2-3 ✂, 3-0 ✂<br>
+                <strong style="color:var(--accent3)">Cut size = 4 ← already optimal!</strong><br><br>
+                Now check each vertex: can any flip improve the cut?
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div style="background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;padding:12px;">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--accent4);margin-bottom:8px;">Step 2 — Check vertex 0 (in S): should we flip?</div>
+            <div style="font-size:0.75rem;color:var(--text2);line-height:1.8;">
+              Vertex 0 connects to: 1 (V\S = crossing ✓) and 3 (V\S = crossing ✓)<br>
+              Crossing edges from 0: <strong style="color:var(--accent3)">2</strong> &nbsp;|&nbsp; Same-side edges from 0: <strong style="color:var(--accent2)">0</strong><br>
+              Gain from flipping = same_side - crossing = 0 - 2 = <strong style="color:var(--accent2)">-2</strong> (worse!)<br>
+              <strong style="color:var(--accent)">→ Do NOT flip vertex 0.</strong>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div style="background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;padding:12px;">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--accent4);margin-bottom:8px;">Step 3 — Check vertices 1, 2, 3: all give negative gain</div>
+            <div style="font-size:0.75rem;color:var(--text2);line-height:1.8;">
+              By symmetry of C4, every vertex has exactly 2 crossing edges and 0 same-side edges.<br>
+              No vertex can be flipped to improve the cut.<br>
+              <strong style="color:var(--accent3)">→ LOCAL MAXIMUM REACHED! Cut = 4 = |E|/2 × 2 ✓</strong><br><br>
+              This is actually the OPTIMAL cut for C4. Greedy found it immediately from the alternating initialization.
+            </div>
+          </div>
+
+          <!-- Greedy failure example -->
+          <div style="background:rgba(255,77,109,0.04);border:1px solid rgba(255,77,109,0.2);border-radius:8px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+              <div style="font-size:0.72rem;font-weight:700;color:var(--accent2);">⚠ Greedy Failure Example — Bad Initialization on K4</div>
+              <button class="btn btn-secondary" style="font-size:0.68rem;" onclick="tryInVisualizer('0 1\n0 2\n0 3\n1 2\n1 3\n2 3','greedy')">▶ Try K4 in Visualizer</button>
+            </div>
+            <div style="font-size:0.75rem;color:var(--text2);line-height:1.8;">
+              Graph K4 (complete graph, 6 edges). Optimal cut = 4 edges (split 2-2).<br>
+              Bad start: S={0} V\S={1,2,3} → cut = 3 edges.<br>
+              Check vertex 0: crossing=3, same=0, gain=-3 → no flip.<br>
+              Check vertex 1: crossing=1(to 0), same=2(to 2,3), gain=2-1=1 → <strong style="color:var(--accent4)">FLIP!</strong><br>
+              After flip: S={0,1} V\S={2,3} → cut = 4 edges = optimal ✓<br>
+              <strong style="color:var(--accent3)">Greedy recovered to optimal here, but this isn't always guaranteed.</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+// ═══════════════════════════════════
+//  GRAPH DATA
+// ═══════════════════════════════════
+let nodes = [], edges = [], partition = [];
+let nodePositions = {}; // persisted positions for drag
+let dragNodeId = null, dragOffsetX = 0, dragOffsetY = 0;
+
+// ── DRAG SUPPORT ──
+function initDrag() {
+  const svg = document.getElementById('viz-svg');
+  if (!svg) return;
+
+  svg.addEventListener('mousedown', e => {
+    const pt = svgPoint(svg, e.clientX, e.clientY);
+    for (const id of nodes) {
+      const p = nodePositions[id];
+      if (!p) continue;
+      const dx = pt.x - p.x, dy = pt.y - p.y;
+      if (Math.sqrt(dx*dx+dy*dy) < 22) {
+        dragNodeId = id; dragOffsetX = dx; dragOffsetY = dy;
+        svg.style.cursor = 'grabbing';
+        e.preventDefault(); return;
+      }
+    }
+  });
+
+  svg.addEventListener('mousemove', e => {
+    if (dragNodeId === null) return;
+    const pt = svgPoint(svg, e.clientX, e.clientY);
+    nodePositions[dragNodeId] = { x: pt.x - dragOffsetX, y: pt.y - dragOffsetY };
+    if (currentStep >= 0 && steps[currentStep]) renderViz(steps[currentStep], null);
+  });
+
+  const endDrag = () => { dragNodeId = null; const svg = document.getElementById('viz-svg'); if (svg) svg.style.cursor = 'default'; };
+  svg.addEventListener('mouseup', endDrag);
+  svg.addEventListener('mouseleave', endDrag);
+}
+
+function svgPoint(svg, x, y) {
+  const pt = svg.createSVGPoint();
+  pt.x = x; pt.y = y;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+// ── TRY IN VISUALIZER ──
+function tryInVisualizer(edgeStr, mode) {
+  document.getElementById('edge-input').value = edgeStr;
+  setMode(mode);
+  showPage('visualizer');
+  setTimeout(() => { buildSteps(); setTimeout(() => playAnim(), 200); }, 100);
+  showNotif('Loaded in Visualizer — playing!');
+}
+
+// ── APPROX RATIO DISPLAY ──
+function updateApproxDisplay(cut, totalEdges, isDone) {
+  const badge = document.getElementById('approx-badge');
+  const guarantee = document.getElementById('approx-guarantee');
+  if (!badge || !guarantee) return;
+
+  if (totalEdges === 0 || algoMode !== 'greedy') {
+    badge.style.display = 'none';
+    guarantee.style.display = 'none';
+    return;
+  }
+
+  const halfE = Math.floor(totalEdges / 2);
+  const pct = (cut / totalEdges * 100).toFixed(0);
+  const meetsGuarantee = cut >= halfE;
+
+  badge.style.display = 'inline-block';
+  badge.textContent = pct + '%';
+  badge.style.background = meetsGuarantee ? 'rgba(57,255,126,0.15)' : 'rgba(255,183,0,0.15)';
+  badge.style.border = `1px solid ${meetsGuarantee ? 'rgba(57,255,126,0.4)' : 'rgba(255,183,0,0.4)'}`;
+  badge.style.color = meetsGuarantee ? 'var(--accent3)' : 'var(--accent4)';
+
+  guarantee.style.display = 'block';
+  guarantee.innerHTML = `0.5-approx guarantee: cut ≥ |E|/2 = ${halfE}<br>` +
+    `Current cut = ${cut} ${meetsGuarantee ? '✓ guarantee satisfied' : '… building …'}<br>` +
+    (isDone ? `<strong style="color:var(--accent3)">✓ LOCAL MAXIMUM — guarantee: ${cut} ≥ ${halfE} ✓</strong>` : `Ratio so far: ${cut}/${totalEdges} = ${pct}%`);
+}
+let steps = [], currentStep = -1, playInterval = null, speedMs = 500;
+let algoMode = 'greedy';
+
+const PRESETS = [
+  { name:'Cycle C4',    edges:'0 1\n1 2\n2 3\n3 0' },
+  { name:'Complete K4', edges:'0 1\n0 2\n0 3\n1 2\n1 3\n2 3' },
+  { name:'Petersen',    edges:'0 1\n1 2\n2 3\n3 4\n4 0\n0 5\n1 6\n2 7\n3 8\n4 9\n5 7\n7 9\n9 6\n6 8\n8 5' },
+  { name:'Bipartite',   edges:'0 3\n0 4\n1 3\n1 5\n2 4\n2 5' },
+  { name:'Triangle',    edges:'0 1\n1 2\n2 0' },
+  { name:'Path P5',     edges:'0 1\n1 2\n2 3\n3 4' },
+];
+
+function loadPreset(idx) {
+  document.getElementById('edge-input').value = PRESETS[idx].edges;
+  showNotif(`Loaded: ${PRESETS[idx].name}`);
+}
+
+function addEdgeFromInputs() {
+  const u = document.getElementById('edge-u').value.trim();
+  const v = document.getElementById('edge-v').value.trim();
+  if (u === '' || v === '') { showNotif('Enter both u and v!'); return; }
+  if (u === v) { showNotif('u and v must be different!'); return; }
+  const current = document.getElementById('edge-input').value.trim();
+  document.getElementById('edge-input').value = current ? current + '\n' + u + ' ' + v : u + ' ' + v;
+  document.getElementById('edge-u').value = '';
+  document.getElementById('edge-v').value = '';
+  showNotif(`Added edge ${u} — ${v}`);
+}
+
+function parseGraph() {
+  const txt = document.getElementById('edge-input').value.trim();
+  const edgeList = [];
+  const nodeSet = new Set();
+  for (const line of txt.split('\n')) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      const u = parseInt(parts[0]), v = parseInt(parts[1]);
+      if (!isNaN(u) && !isNaN(v) && u !== v) {
+        edgeList.push([u, v]);
+        nodeSet.add(u); nodeSet.add(v);
+      }
+    }
+  }
+  nodes = Array.from(nodeSet).sort((a,b)=>a-b);
+  edges = edgeList;
+  return nodes.length > 0;
+}
+
+function layoutNodes(n, W, H) {
+  const cx = W/2, cy = H/2, r = Math.min(W, H) * 0.38;
+  const pos = {};
+  nodes.forEach((id, i) => {
+    // Use saved drag position if available, otherwise compute circle layout
+    if (nodePositions[id]) {
+      pos[id] = nodePositions[id];
+    } else {
+      const angle = (2*Math.PI*i/n) - Math.PI/2;
+      pos[id] = { x: cx + r*Math.cos(angle), y: cy + r*Math.sin(angle) };
+      nodePositions[id] = pos[id];
+    }
+  });
+  return pos;
+}
+
+function countCut(part) {
+  return edges.filter(([u,v]) => part[nodes.indexOf(u)] !== part[nodes.indexOf(v)]).length;
+}
+
+// ═══════════════════════════════════
+//  STEP GENERATION
+// ═══════════════════════════════════
+function generateGreedySteps() {
+  const result = [];
+  const n = nodes.length;
+  const part = new Array(n).fill(0).map((_,i) => i % 2); // initial alternating
+  let ops = 0;
+
+  function addStep(pseudoLine, explanation, partSnap, highlight=-1) {
+    result.push({
+      pseudoLine, explanation,
+      partition: [...partSnap],
+      highlight, // node being considered
+      ops: ops,
+      cut: countCut(partSnap),
+      sSize: partSnap.filter(x=>x===0).length,
+      vsSize: partSnap.filter(x=>x===1).length,
+    });
+  }
+
+  addStep(0, `<span class="hl">INITIALIZE</span>: Assign vertices to alternating sides. Initial cut = <span class="val">${countCut(part)}</span> edges.`, part);
+
+  let improved = true;
+  let iteration = 0;
+  while (improved && iteration < 50) {
+    improved = false;
+    iteration++;
+    for (let i = 0; i < n; i++) {
+      ops++;
+      const v = nodes[i];
+      // Count edges crossing / not crossing for v
+      let crossing = 0, notCrossing = 0;
+      for (const [u, w] of edges) {
+        const other = (u === v) ? w : (w === v ? u : null);
+        if (other === null) continue;
+        const j = nodes.indexOf(other);
+        if (part[j] !== part[i]) crossing++; else notCrossing++;
+      }
+      const gain = notCrossing - crossing;
+
+      addStep(5, `Check vertex <span class="hl">v=${v}</span> (in Set ${part[i]===0?'S':'V\\\\S'}). Crossing edges: <span class="val">${crossing}</span>, Same-side: <span class="val">${notCrossing}</span>. Gain from flip: <span class="val">${gain}</span>.`, part, i);
+
+      if (gain > 0) {
+        part[i] = 1 - part[i];
+        improved = true;
+        ops++;
+        addStep(7, `<span class="good">FLIP!</span> Moving vertex <span class="hl">v=${v}</span> to Set ${part[i]===0?'S':'V\\\\S'}. Cut improved to <span class="val">${countCut(part)}</span> edges.`, part, i);
+      }
+    }
+  }
+
+  addStep(9, `<span class="good">LOCAL MAXIMUM REACHED!</span> No single vertex flip can improve the cut. Final cut = <span class="val">${countCut(part)}</span> edges. Approximation ≥ |E|/2 = <span class="val">${Math.floor(edges.length/2)}</span>.`, part);
+  return result;
+}
+
+function generateBruteSteps() {
+  const result = [];
+  const n = nodes.length;
+  let ops = 0;
+  let bestCut = -1, bestPart = null;
+
+  if (n > 12) {
+    result.push({ pseudoLine:0, explanation:`<span class="val">WARNING:</span> Brute force with ${n} nodes requires 2^${n} = ${Math.pow(2,n).toLocaleString()} iterations. Showing first 64 only.`, partition: new Array(n).fill(0), highlight:-1, ops:0, cut:0, sSize:n, vsSize:0 });
+  }
+
+  const limit = Math.min(Math.pow(2, n), 64);
+
+  result.push({ pseudoLine:0, explanation:`<span class="hl">BRUTE FORCE</span>: Try all 2^${n} = <span class="val">${Math.pow(2,n).toLocaleString()}</span> partitions. ${n > 12 ? 'Showing first 64.' : ''}`, partition: new Array(n).fill(0), highlight:-1, ops:0, cut:0, sSize:n, vsSize:0 });
+
+  for (let mask = 0; mask < limit; mask++) {
+    const part = nodes.map((_, i) => (mask >> i) & 1);
+    const cut = countCut(part);
+    ops++;
+    const isBest = cut > bestCut;
+    if (isBest) { bestCut = cut; bestPart = [...part]; }
+    result.push({
+      pseudoLine: isBest ? 5 : 4,
+      explanation: `Partition ${mask.toString(2).padStart(n,'0')} → S={${nodes.filter((_,i)=>part[i]===0).join(',')}} V\\S={${nodes.filter((_,i)=>part[i]===1).join(',')}} — Cut = <span class="val">${cut}</span>${isBest ? ' <span class="good">← NEW BEST!</span>' : ''}`,
+      partition: isBest ? [...part] : (bestPart ? [...bestPart] : [...part]),
+      highlight: -1, ops, cut: bestCut, sSize: (bestPart||part).filter(x=>x===0).length, vsSize: (bestPart||part).filter(x=>x===1).length,
+    });
+  }
+
+  result.push({ pseudoLine:7, explanation:`<span class="good">DONE!</span> Optimal cut = <span class="val">${bestCut}</span> edges. S={${nodes.filter((_,i)=>bestPart[i]===0).join(',')}} V\\S={${nodes.filter((_,i)=>bestPart[i]===1).join(',')}}.`, partition:[...bestPart], highlight:-1, ops, cut:bestCut, sSize:bestPart.filter(x=>x===0).length, vsSize:bestPart.filter(x=>x===1).length });
+  return result;
+}
+
+// ═══════════════════════════════════
+//  PSEUDOCODE
+// ═══════════════════════════════════
+const PSEUDO_GREEDY = [
+  { text: "GREEDY_LOCAL_SEARCH(G = (V, E)):", tip: "Input: undirected graph G with vertex set V and edge set E" },
+  { text: "  partition ← alternating assignment (S or V\\S)", tip: "Initialize: assign even-index nodes to S, odd-index to V\\S" },
+  { text: "  improved ← true", tip: "Flag to track if any flip improved the cut this round" },
+  { text: "  while improved:", tip: "Keep looping until a full pass finds no improvement → local max" },
+  { text: "    improved ← false", tip: "Assume no improvement at start of each pass" },
+  { text: "    for each vertex v in V:", tip: "Check every single vertex — O(|V|) per pass" },
+  { text: "      gain ← edges_same_side(v) − edges_crossing(v)", tip: "Positive gain = flipping v would increase cut size" },
+  { text: "      if gain > 0: flip v; improved ← true", tip: "Flip! Moving v increases cut by 'gain' edges" },
+  { text: "  return partition", tip: "Local maximum found — no single flip can improve cut" },
+  { text: "  // Guarantees cut ≥ |E|/2", tip: "At local max: each vertex has ≥ degree/2 crossing edges → cut ≥ |E|/2" },
+];
+
+const PSEUDO_BRUTE = [
+  { text: "BRUTE_FORCE_MAX_CUT(G = (V, E)):", tip: "Exact algorithm — guaranteed optimal but exponential time" },
+  { text: "  bestCut ← 0; bestPartition ← ∅", tip: "Track the best partition seen so far" },
+  { text: "  for mask = 0 to 2^|V| − 1:", tip: "Enumerate ALL 2^n possible partitions using bitmask" },
+  { text: "    S ← {v : bit v of mask = 0}", tip: "Bit 0 = Set S, Bit 1 = Set V\\S for each vertex" },
+  { text: "    cut ← count edges with one endpoint in S", tip: "O(|E|) per partition check" },
+  { text: "    if cut > bestCut:", tip: "New best found — update" },
+  { text: "      bestCut ← cut; bestPartition ← S", tip: "Save this partition as current best" },
+  { text: "  return bestPartition", tip: "Optimal solution — checked all 2^n possibilities" },
+];
+
+function renderPseudo() {
+  const PSEUDO = algoMode === 'greedy' ? PSEUDO_GREEDY : PSEUDO_BRUTE;
+  const c = document.getElementById('pseudo-container');
+  c.innerHTML = PSEUDO.map((l,i) => `
+    <div class="pseudo-line" id="pseudo-${i}">
+      <span class="pseudo-num">${l.text ? i+1 : ''}</span>
+      <span class="pseudo-text">${escapeHtml(l.text)}</span>
+      ${l.tip ? `<span class="tooltip-hint">${l.tip}</span>` : ''}
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════
+//  HISTORY TABLE
+// ═══════════════════════════════════
+function addHistoryRow(idx) {
+  const step = steps[idx];
+  if (!step) return;
+  const tbody = document.getElementById('history-body');
+  const tr = document.createElement('tr');
+  tr.setAttribute('data-step', idx);
+  tr.onclick = () => jumpToStep(idx);
+  const action = (step.explanation || '').replace(/<[^>]+>/g, '').substring(0, 55);
+  tr.innerHTML = `<td>${idx+1}</td><td>${action}${action.length >= 55 ? '…' : ''}</td><td>${step.cut}</td><td>${step.ops}</td>`;
+  tbody.appendChild(tr);
+  // scroll to bottom
+  const container = document.getElementById('history-container');
+  container.scrollTop = container.scrollHeight;
+  // highlight current row
+  document.querySelectorAll('#history-body tr').forEach(r => r.classList.remove('current-row'));
+  tr.classList.add('current-row');
+}
+
+function jumpToStep(idx) {
+  if (idx >= 0 && idx < steps.length) {
+    const prev = currentStep >= 0 ? steps[currentStep] : null;
+    currentStep = idx;
+    updateStepDisplay();
+    renderViz(steps[idx], prev);
+    document.querySelectorAll('#history-body tr').forEach(r =>
+      r.classList.toggle('current-row', +r.getAttribute('data-step') === idx));
+  }
+}
+
+function highlightPseudo(line) {
+  document.querySelectorAll('.pseudo-line').forEach(el=>el.classList.remove('active'));
+  if (line < 0) return;
+  const el = document.getElementById(`pseudo-${line}`);
+  if (!el) return;
+  el.classList.add('active');
+  const c = document.getElementById('pseudo-container');
+  const top = el.offsetTop, bot = top + el.offsetHeight;
+  if (top < c.scrollTop) c.scrollTop = top - 10;
+  else if (bot > c.scrollTop + c.clientHeight) c.scrollTop = bot - c.clientHeight + 10;
+}
+
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ═══════════════════════════════════
+//  FLIP ANIMATION ENHANCEMENT
+// ═══════════════════════════════════
+let flipAnimNodes = {}; // nodeId -> animationEndTime
+
+function renderVizWithFlip(step, prevStep) {
+  if (!step) return;
+  const svg = document.getElementById('viz-svg');
+  const container = document.getElementById('viz-container');
+  const W = container.clientWidth - 32, H = 340;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('height', H);
+
+  const n = nodes.length;
+  if (n === 0) { svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#1e2d42" font-size="14" font-family="Segoe UI">Enter edges and press Build Steps</text>`; return; }
+
+  const pos = layoutNodes(n, W, H);
+  const part = step.partition;
+  const prevPart = prevStep ? prevStep.partition : null;
+  let html = '';
+
+  // Defs for glow filter
+  html += `<defs>
+    <filter id="glow-s"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="glow-vs"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="glow-flip"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`;
+
+  // Draw edges
+  for (const [u, v] of edges) {
+    const pu = pos[u], pv = pos[v];
+    const ui = nodes.indexOf(u), vi = nodes.indexOf(v);
+    const isCut = part[ui] !== part[vi];
+    const color = isCut ? 'var(--cut-edge)' : 'var(--uncut-edge)';
+    const sw = isCut ? 2.5 : 1.5;
+    html += `<line x1="${pu.x.toFixed(1)}" y1="${pu.y.toFixed(1)}" x2="${pv.x.toFixed(1)}" y2="${pv.y.toFixed(1)}" stroke="${color}" stroke-width="${sw}" opacity="${isCut?1:0.4}" style="transition:all 0.3s;"/>`;
+    if (isCut) {
+      const mx = (pu.x+pv.x)/2, my = (pu.y+pv.y)/2;
+      html += `<text x="${mx.toFixed(1)}" y="${(my-5).toFixed(1)}" text-anchor="middle" fill="var(--cut-edge)" font-size="9" font-family="Consolas,monospace">✂</text>`;
+    }
+  }
+
+  // Draw nodes
+  nodes.forEach((id, i) => {
+    const p = pos[id];
+    const inS = part[i] === 0;
+    const isHighlight = i === step.highlight;
+    const wasFlipped = prevPart && prevPart[i] !== part[i];
+
+    let color, fillColor, r, filterStr;
+    if (wasFlipped) {
+      // Big yellow flash for flipped nodes
+      color = 'var(--accent4)';
+      fillColor = 'rgba(255,183,0,0.35)';
+      r = 26;
+      filterStr = 'filter:url(#glow-flip)';
+    } else if (isHighlight) {
+      color = 'var(--accent4)';
+      fillColor = 'rgba(255,183,0,0.2)';
+      r = 22;
+      filterStr = 'filter:url(#glow-flip)';
+    } else {
+      color = inS ? 'var(--set-s)' : 'var(--set-vs)';
+      fillColor = inS ? 'rgba(0,229,255,0.18)' : 'rgba(255,77,109,0.18)';
+      r = 20;
+      filterStr = `filter:url(#glow-${inS?'s':'vs'})`;
+    }
+
+    html += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${fillColor}" stroke="${color}" stroke-width="${wasFlipped?3.5:isHighlight?3:2}" style="${filterStr};transition:all 0.3s;"/>`;
+    html += `<text x="${p.x.toFixed(1)}" y="${(p.y+5).toFixed(1)}" text-anchor="middle" fill="${color}" font-size="13" font-weight="700" font-family="Consolas,monospace">${id}</text>`;
+
+    // Flip arrow indicator
+    if (wasFlipped) {
+      const fromSide = inS ? 'V\\S→S' : 'S→V\\S';
+      html += `<text x="${p.x.toFixed(1)}" y="${(p.y-r-8).toFixed(1)}" text-anchor="middle" fill="var(--accent4)" font-size="10" font-weight="800" font-family="Consolas,monospace">⟳ ${fromSide}</text>`;
+    }
+
+    const label = inS ? 'S' : 'V\\S';
+    html += `<text x="${p.x.toFixed(1)}" y="${(p.y+r+14).toFixed(1)}" text-anchor="middle" fill="${color}" font-size="9" font-family="Consolas,monospace" opacity="0.7">${label}</text>`;
+  });
+
+  // Legend
+  html += `<rect x="8" y="8" width="40" height="20" rx="4" fill="rgba(0,229,255,0.1)" stroke="rgba(0,229,255,0.3)" stroke-width="1"/>`;
+  html += `<text x="28" y="22" text-anchor="middle" fill="var(--set-s)" font-size="10" font-weight="700" font-family="Consolas,monospace">S</text>`;
+  html += `<rect x="56" y="8" width="50" height="20" rx="4" fill="rgba(255,77,109,0.1)" stroke="rgba(255,77,109,0.3)" stroke-width="1"/>`;
+  html += `<text x="81" y="22" text-anchor="middle" fill="var(--set-vs)" font-size="10" font-weight="700" font-family="Consolas,monospace">V\\S</text>`;
+
+  svg.innerHTML = html;
+
+  // Update stats
+  document.getElementById('stat-cut').textContent = step.cut;
+  document.getElementById('stat-ops').textContent = step.ops;
+  document.getElementById('stat-ssize').textContent = step.sSize;
+  document.getElementById('stat-vssize').textContent = step.vsSize;
+  const maxCut = edges.length;
+  const quality = maxCut > 0 ? (step.cut / maxCut * 100) : 0;
+  document.getElementById('quality-bar').style.width = quality + '%';
+  document.getElementById('quality-label').textContent = `${step.cut} / ${maxCut} edges cut (${quality.toFixed(0)}%)`;
+  const isDone = step.pseudoLine === 9 || step.pseudoLine === 7;
+  updateApproxDisplay(step.cut, maxCut, isDone);
+  document.getElementById('explanation').innerHTML = step.explanation || '';
+  highlightPseudo(step.pseudoLine);
+}
+
+// ═══════════════════════════════════
+//  SIDE-BY-SIDE COMPARISON
+// ═══════════════════════════════════
+const COMPARE_PRESETS = [
+  { name:'Cycle C4',  edges:[[0,1],[1,2],[2,3],[3,0]], nodes:[0,1,2,3] },
+  { name:'K4',        edges:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]], nodes:[0,1,2,3] },
+  { name:'Bipartite', edges:[[0,3],[0,4],[1,3],[1,5],[2,4],[2,5]], nodes:[0,1,2,3,4,5] },
+  { name:'Path P5',   edges:[[0,1],[1,2],[2,3],[3,4]], nodes:[0,1,2,3,4] },
+];
+let compareGraphIdx = 0;
+
+function loadComparePreset(idx) {
+  compareGraphIdx = idx;
+  drawCompareGraph('compare-svg-greedy', COMPARE_PRESETS[idx], null, -1);
+  drawCompareGraph('compare-svg-brute', COMPARE_PRESETS[idx], null, -1);
+  document.getElementById('compare-result').style.display = 'none';
+  document.getElementById('compare-info-greedy').textContent = '';
+  document.getElementById('compare-info-brute').textContent = '';
+}
+
+function drawCompareGraph(svgId, graphData, partition, highlight) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const W = svg.clientWidth || 200, H = 180;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const { nodes: ns, edges: es } = graphData;
+  const n = ns.length;
+  const cx = W/2, cy = H/2, r = Math.min(W,H)*0.36;
+  const pos = {};
+  ns.forEach((id, i) => {
+    const angle = (2*Math.PI*i/n) - Math.PI/2;
+    pos[id] = { x: cx + r*Math.cos(angle), y: cy + r*Math.sin(angle) };
+  });
+
+  let html = '';
+  for (const [u, v] of es) {
+    const pu = pos[u], pv = pos[v];
+    if (!pu || !pv) continue;
+    const ui = ns.indexOf(u), vi = ns.indexOf(v);
+    const isCut = partition ? partition[ui] !== partition[vi] : false;
+    html += `<line x1="${pu.x.toFixed(1)}" y1="${pu.y.toFixed(1)}" x2="${pv.x.toFixed(1)}" y2="${pv.y.toFixed(1)}" stroke="${isCut?'var(--cut-edge)':'var(--uncut-edge)'}" stroke-width="${isCut?2:1.5}" opacity="${isCut?1:0.4}"/>`;
+  }
+  ns.forEach((id, i) => {
+    const p = pos[id];
+    const inS = partition ? partition[i] === 0 : true;
+    const isHL = highlight === i;
+    const color = isHL ? 'var(--accent4)' : (inS ? 'var(--set-s)' : 'var(--set-vs)');
+    const fill = isHL ? 'rgba(255,183,0,0.25)' : (inS ? 'rgba(0,229,255,0.18)' : 'rgba(255,77,109,0.18)');
+    html += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="14" fill="${fill}" stroke="${color}" stroke-width="2"/>`;
+    html += `<text x="${p.x.toFixed(1)}" y="${(p.y+4).toFixed(1)}" text-anchor="middle" fill="${color}" font-size="10" font-weight="700" font-family="Consolas,monospace">${id}</text>`;
+  });
+  svg.innerHTML = html;
+}
+
+function runGreedyOnGraph(graphData) {
+  const { nodes: ns, edges: es } = graphData;
+  const n = ns.length;
+  const part = ns.map((_, i) => i % 2);
+  let ops = 0;
+  const countCutG = (p) => es.filter(([u,v]) => p[ns.indexOf(u)] !== p[ns.indexOf(v)]).length;
+
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (let i = 0; i < n; i++) {
+      ops++;
+      let crossing = 0, same = 0;
+      for (const [u,v] of es) {
+        const other = u === ns[i] ? v : (v === ns[i] ? u : null);
+        if (other === null) continue;
+        const j = ns.indexOf(other);
+        if (part[j] !== part[i]) crossing++; else same++;
+      }
+      if (same > crossing) { part[i] = 1-part[i]; improved = true; ops++; }
+    }
+  }
+  return { partition: [...part], cut: countCutG(part), ops };
+}
+
+function runBruteOnGraph(graphData) {
+  const { nodes: ns, edges: es } = graphData;
+  const n = ns.length;
+  let bestCut = -1, bestPart = null, ops = 0;
+  const countCutG = (p) => es.filter(([u,v]) => p[ns.indexOf(u)] !== p[ns.indexOf(v)]).length;
+  for (let mask = 0; mask < Math.pow(2, n); mask++) {
+    const p = ns.map((_, i) => (mask >> i) & 1);
+    const cut = countCutG(p); ops++;
+    if (cut > bestCut) { bestCut = cut; bestPart = [...p]; }
+  }
+  return { partition: bestPart, cut: bestCut, ops };
+}
+
+function runComparison() {
+  const g = COMPARE_PRESETS[compareGraphIdx];
+  const greedyResult = runGreedyOnGraph(g);
+  const bruteResult = runBruteOnGraph(g);
+
+  drawCompareGraph('compare-svg-greedy', g, greedyResult.partition, -1);
+  drawCompareGraph('compare-svg-brute', g, bruteResult.partition, -1);
+
+  const isOptimal = greedyResult.cut === bruteResult.cut;
+  const ratio = bruteResult.cut > 0 ? (greedyResult.cut / bruteResult.cut * 100).toFixed(0) : 100;
+
+  document.getElementById('compare-info-greedy').innerHTML =
+    `Cut: <strong style="color:var(--accent3)">${greedyResult.cut}</strong> / ${g.edges.length} edges<br>Operations: ${greedyResult.ops}<br>S={${g.nodes.filter((_,i)=>greedyResult.partition[i]===0).join(',')}}`;
+
+  document.getElementById('compare-info-brute').innerHTML =
+    `Cut: <strong style="color:var(--accent2)">${bruteResult.cut}</strong> / ${g.edges.length} edges (OPTIMAL)<br>Operations: ${bruteResult.ops}<br>S={${g.nodes.filter((_,i)=>bruteResult.partition[i]===0).join(',')}}`;
+
+  const resultEl = document.getElementById('compare-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = isOptimal
+    ? `<span style="color:var(--accent3)">✓ Greedy found the OPTIMAL solution!</span> Cut = ${greedyResult.cut} = Brute Force result. Approximation ratio = 100%.`
+    : `<span style="color:var(--accent4)">⚠ Greedy found a suboptimal solution.</span> Greedy: ${greedyResult.cut} vs Optimal: ${bruteResult.cut}. Ratio: ${ratio}% ≥ 50% (0.5-approx guarantee holds ✓). Both sides ≥ |E|/2 = ${Math.floor(g.edges.length/2)}.`;
+
+  // Show operation comparison bars
+  const barsEl = document.getElementById('compare-bars');
+  barsEl.style.display = 'block';
+  const maxOps = Math.max(greedyResult.ops, bruteResult.ops, 1);
+  const gPct = (greedyResult.ops / maxOps * 100).toFixed(0);
+  const bPct = (bruteResult.ops / maxOps * 100).toFixed(0);
+  document.getElementById('bar-greedy-val').textContent = `${greedyResult.ops} ops`;
+  document.getElementById('bar-brute-val').textContent = `${bruteResult.ops} ops`;
+  setTimeout(() => {
+    document.getElementById('bar-greedy').style.width = gPct + '%';
+    document.getElementById('bar-brute').style.width = bPct + '%';
+  }, 50);
+  const speedup = bruteResult.ops > greedyResult.ops
+    ? `Greedy is ${(bruteResult.ops / greedyResult.ops).toFixed(1)}× faster than Brute Force on this input!`
+    : `Both algorithms used similar operations on this small input.`;
+  document.getElementById('speedup-label').textContent = speedup;
+}
+
+function resetComparison() {
+  const g = COMPARE_PRESETS[compareGraphIdx];
+  drawCompareGraph('compare-svg-greedy', g, null, -1);
+  drawCompareGraph('compare-svg-brute', g, null, -1);
+  document.getElementById('compare-result').style.display = 'none';
+  document.getElementById('compare-bars').style.display = 'none';
+  document.getElementById('bar-greedy').style.width = '0%';
+  document.getElementById('bar-brute').style.width = '0%';
+  document.getElementById('compare-info-greedy').textContent = '';
+  document.getElementById('compare-info-brute').textContent = '';
+}
+// ═══════════════════════════════════
+//  PLAYBACK
+// ═══════════════════════════════════
+function buildSteps() {
+  if (!parseGraph()) { showNotif('Invalid graph! Check edges.'); return; }
+  if (nodes.length === 0) { showNotif('No nodes found!'); return; }
+  steps = algoMode === 'greedy' ? generateGreedySteps() : generateBruteSteps();
+  currentStep = 0;
+  document.getElementById('history-body').innerHTML = '';
+  setStatus('ready');
+  document.getElementById('btn-step').disabled = false;
+  document.getElementById('btn-play').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+  updateStepDisplay();
+  renderViz(steps[0]);
+  addHistoryRow(0);
+  showNotif(`${steps.length} steps generated!`);
+}
+
+function renderViz(step, prevStep) { renderVizWithFlip(step, prevStep); }
+
+function stepForward() {
+  if (currentStep < steps.length - 1) {
+    const prev = steps[currentStep];
+    currentStep++;
+    updateStepDisplay();
+    renderViz(steps[currentStep], prev);
+    addHistoryRow(currentStep);
+  } else {
+    setStatus('done'); stopPlay();
+  }
+}
+
+function playAnim() {
+  if (currentStep >= steps.length - 1) currentStep = 0;
+  setStatus('playing');
+  document.getElementById('btn-play').disabled = true;
+  document.getElementById('btn-pause').disabled = false;
+  playInterval = setInterval(() => {
+    if (currentStep < steps.length - 1) stepForward();
+    else { stopPlay(); setStatus('done'); }
+  }, speedMs);
+}
+
+function pauseAnim() {
+  stopPlay(); setStatus('paused');
+  document.getElementById('btn-play').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+}
+
+function stopPlay() {
+  if (playInterval) { clearInterval(playInterval); playInterval = null; }
+  document.getElementById('btn-pause').disabled = true;
+  document.getElementById('btn-play').disabled = false;
+}
+
+function resetAll() {
+  stopPlay(); steps = []; currentStep = -1;
+  document.getElementById('history-body').innerHTML = '';
+  document.getElementById('explanation').innerHTML = 'Press <strong>Build Steps</strong> to start the visualization.';
+  document.getElementById('btn-step').disabled = true;
+  document.getElementById('btn-play').disabled = true;
+  document.getElementById('btn-pause').disabled = true;
+  setStatus('idle'); updateStepDisplay(); highlightPseudo(-1);
+  ['stat-cut','stat-ops','stat-ssize','stat-vssize'].forEach(id=>document.getElementById(id).textContent='0');
+  document.getElementById('quality-bar').style.width='0%';
+  document.getElementById('quality-label').textContent='';
+  const ab = document.getElementById('approx-badge'); if (ab) ab.style.display='none';
+  const ag = document.getElementById('approx-guarantee'); if (ag) ag.style.display='none';
+  nodePositions = {};
+  const svg = document.getElementById('viz-svg');
+  const W = document.getElementById('viz-container').clientWidth - 32;
+  svg.setAttribute('viewBox', `0 0 ${W} 340`);
+  svg.innerHTML = `<text x="${W/2}" y="170" text-anchor="middle" fill="#1e2d42" font-size="14" font-family="Segoe UI">Press Build Steps to visualize</text>`;
+}
+
+function updateStepDisplay() {
+  document.getElementById('step-counter').textContent = `Step ${currentStep >= 0 ? currentStep+1 : 0} / ${steps.length}`;
+}
+
+function updateSpeed() {
+  const v = parseInt(document.getElementById('speed-slider').value);
+  const speeds = [0,2000,1500,1000,500,300,200,100,50];
+  const labels = ['','0.25×','0.5×','0.75×','1×','1.5×','2×','3×','4×'];
+  speedMs = speeds[v]||500;
+  document.getElementById('speed-val').textContent = labels[v];
+  if (playInterval) { stopPlay(); playAnim(); }
+}
+
+function setStatus(s) {
+  const el = document.getElementById('status-badge');
+  el.className = 'status-badge status-'+s;
+  el.textContent = s.toUpperCase();
+}
+
+function setMode(m) {
+  algoMode = m;
+  document.getElementById('mode-greedy').classList.toggle('active', m==='greedy');
+  document.getElementById('mode-brute').classList.toggle('active', m==='brute');
+  const desc = m === 'greedy'
+    ? 'Start random → flip vertices that improve cut → stop at local max. Time: O(|V|·|E|). Guarantees ≥ |E|/2 cut.'
+    : 'Try ALL 2ⁿ partitions → return best. Time: O(2ⁿ·|E|). Optimal but exponential. Max ~12 nodes.';
+  document.getElementById('mode-desc').textContent = desc;
+  renderPseudo();
+  resetAll();
+}
+
+// ═══════════════════════════════════
+//  PAGE NAVIGATION
+// ═══════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  const idx = {visualizer:0,np:1,compare:2,learn:3}[name];
+  document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  if (name === 'compare') setTimeout(drawGrowthChart, 100);
+}
+
+function toggleCollapsible(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.style.display = body.style.display === 'none' ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════
+//  GROWTH CHART
+// ═══════════════════════════════════
+function drawGrowthChart() {
+  const canvas = document.getElementById('growth-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 600;
+  canvas.width = W * devicePixelRatio; canvas.height = 220 * devicePixelRatio;
+  canvas.style.width = W+'px'; canvas.style.height = '220px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const w=W, h=220;
+  ctx.clearRect(0,0,w,h);
+  const pad={l:55,r:20,t:15,b:48}, cW=w-pad.l-pad.r, cH=h-pad.t-pad.b;
+  const maxN=20, maxY=Math.pow(2,maxN);
+  const sx=n=>pad.l+(n/maxN)*cW, sy=v=>pad.t+cH*(1-Math.min(v/maxY,1));
+
+  // Grid
+  ctx.strokeStyle='#1a2035'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=pad.t+cH*(1-i/4);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cW,y);ctx.stroke();}
+  ctx.beginPath();ctx.moveTo(pad.l,pad.t+cH);ctx.lineTo(pad.l+cW,pad.t+cH);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,pad.t+cH);ctx.stroke();
+
+  // Brute force: 2^n * n (approx)
+  ctx.beginPath(); ctx.strokeStyle='#ff4d6d'; ctx.lineWidth=2; ctx.setLineDash([]);
+  for(let n=1;n<=maxN;n++){const v=Math.pow(2,n)*n; const x=sx(n),y=sy(v); n===1?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.stroke();
+
+  // Greedy: n^2 (|V|*|E| approx n^2)
+  ctx.beginPath(); ctx.strokeStyle='#39ff7e'; ctx.lineWidth=2; ctx.setLineDash([4,2]);
+  for(let n=1;n<=maxN;n++){const v=n*n*2; const x=sx(n),y=sy(v); n===1?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Axis tick labels (n values) — placed with enough room below axis
+  ctx.fillStyle='rgba(90,114,153,0.8)'; ctx.font='9px Consolas,monospace'; ctx.textAlign='center';
+  for(let n=0;n<=maxN;n+=5) ctx.fillText(n, sx(n), pad.t+cH+16);
+
+  // X axis label — below ticks with clear separation
+  ctx.fillStyle='rgba(90,114,153,0.6)'; ctx.font='9px Consolas,monospace'; ctx.textAlign='center';
+  ctx.fillText('n  (number of vertices)', pad.l+cW/2, h-6);
+
+  // Y axis label
+  ctx.save(); ctx.translate(14, pad.t+cH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('operations', 0, 0); ctx.restore();
+}
+
+// ═══════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════
+function showNotif(msg) {
+  const n=document.getElementById('notif');
+  n.textContent=msg; n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'),2200);
+}
+
+// ═══════════════════════════════════
+//  INTERACTIVE REDUCTION BUILDER
+// ═══════════════════════════════════
+const NAE_PRESETS = [
+  { vars:'x1,x2,x3', clauses:'x1,x2,~x3\n~x1,x2,x3\nx1,~x2,x3' },
+  { vars:'a,b,c,d',  clauses:'a,b,~c\n~a,c,d\nb,~c,~d' },
+];
+let reductionEdgeStr = '';
+
+function loadNAEPreset(idx) {
+  document.getElementById('nae-vars').value = NAE_PRESETS[idx].vars;
+  document.getElementById('nae-clauses').value = NAE_PRESETS[idx].clauses;
+  showNotif('Preset loaded — click Build Graph!');
+}
+
+function buildReduction() {
+  const varStr = document.getElementById('nae-vars').value.trim();
+  const clauseStr = document.getElementById('nae-clauses').value.trim();
+  if (!varStr || !clauseStr) { showNotif('Enter variables and clauses!'); return; }
+
+  const vars = varStr.split(',').map(v=>v.trim()).filter(Boolean);
+  const clauseLines = clauseStr.split('\n').map(l=>l.trim()).filter(Boolean);
+  const clauses = clauseLines.map(l => l.split(',').map(x=>x.trim()));
+
+  // ── EDGE CASE VALIDATION ──
+  const warnings = [];
+  for (let ci = 0; ci < clauses.length; ci++) {
+    const c = clauses[ci];
+    if (c.length !== 3) { showNotif(`Clause ${ci+1} must have exactly 3 literals!`); return; }
+
+    // Edge case 1: repeated literal in same clause (e.g. x1, x1, x2)
+    const seen = new Set();
+    for (const lit of c) {
+      if (seen.has(lit)) warnings.push(`Clause ${ci+1}: repeated literal "${lit}" — this clause is trivially NAE-unsatisfiable if the third literal matches too.`);
+      seen.add(lit);
+    }
+
+    // Edge case 2: complementary literals in same clause (e.g. x1, ~x1, x2)
+    for (const lit of c) {
+      const neg = lit.startsWith('~') ? lit.slice(1) : '~'+lit;
+      if (seen.has(neg) && seen.has(lit)) {
+        warnings.push(`Clause ${ci+1}: contains both "${lit}" and "${neg}" — this clause is always NAE-satisfied regardless of assignment.`);
+      }
+    }
+
+    // Edge case 3: literal not in variable list
+    for (const lit of c) {
+      const base = lit.startsWith('~') ? lit.slice(1) : lit;
+      if (!vars.includes(base)) warnings.push(`Clause ${ci+1}: literal "${lit}" uses variable "${base}" not in variable list.`);
+    }
+  }
+
+  // Edge case 4: duplicate variable names
+  const varSet = new Set(vars);
+  if (varSet.size !== vars.length) warnings.push('Duplicate variable names detected — each variable should appear once.');
+
+  // Build node list: for each var, two nodes (positive and negative literal)
+  const nodeMap = {}; // label -> index
+  const nodeLabels = [];
+  vars.forEach(v => {
+    nodeMap[v] = nodeLabels.length; nodeLabels.push(v);
+    nodeMap['~'+v] = nodeLabels.length; nodeLabels.push('~'+v);
+  });
+
+  // Build edge list
+  const edgeSet = new Set();
+  const edgeList = [];
+  const varEdges = [], clauseEdges = [];
+
+  // Variable edges (force xᵢ and ¬xᵢ to opposite sides)
+  vars.forEach(v => {
+    const u = nodeMap[v], w = nodeMap['~'+v];
+    const key = u < w ? `${u}-${w}` : `${w}-${u}`;
+    if (!edgeSet.has(key)) { edgeSet.add(key); edgeList.push([u,w]); varEdges.push([u,w]); }
+  });
+
+  // Clause edges (triangle for each clause)
+  // Edge case: if two literals in a clause are the same node, skip that edge (self-loop)
+  // Edge case: if two literals are complements, they're already forced apart by variable edge
+  clauses.forEach(c => {
+    const lits = c.map(l => {
+      const key = l.startsWith('~') ? l : l;
+      if (!(key in nodeMap)) return null;
+      return nodeMap[key];
+    });
+    if (lits.includes(null)) return;
+    [[0,1],[1,2],[0,2]].forEach(([a,b]) => {
+      const u=lits[a], v=lits[b];
+      if (u === v) return; // skip self-loops (repeated literal edge case)
+      const k = u<v?`${u}-${v}`:`${v}-${u}`;
+      if (!edgeSet.has(k)) { edgeSet.add(k); edgeList.push([u,v]); clauseEdges.push([u,v]); }
+    });
+  });
+
+  const n = nodeLabels.length;
+  const k = vars.length + clauses.length * 2; // threshold
+
+  // Store for "send to visualizer"
+  reductionEdgeStr = edgeList.map(([u,v])=>`${u} ${v}`).join('\n');
+
+  // Draw the reduction SVG
+  const W = 700, H = Math.max(200, n * 30 + 60);
+  const svg = document.getElementById('reduction-svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.height = H + 'px';
+
+  // Layout: vars on left column (positive), negations on right column
+  const colX1 = 120, colX2 = 580;
+  const rowH = Math.min(50, (H-40)/vars.length);
+  const pos = {};
+  vars.forEach((v,i) => {
+    const y = 30 + i * rowH + rowH/2;
+    pos[nodeMap[v]] = {x:colX1, y};
+    pos[nodeMap['~'+v]] = {x:colX2, y};
+  });
+
+  let html = '';
+
+  // Variable edges (dashed purple)
+  varEdges.forEach(([u,v]) => {
+    const pu=pos[u], pv=pos[v];
+    html += `<line x1="${pu.x}" y1="${pu.y}" x2="${pv.x}" y2="${pv.y}" stroke="rgba(167,139,250,0.4)" stroke-width="1.5" stroke-dasharray="6,3"/>`;
+    const mx=(pu.x+pv.x)/2, my=(pu.y+pv.y)/2;
+    html += `<text x="${mx}" y="${my-4}" text-anchor="middle" fill="rgba(167,139,250,0.6)" font-size="8" font-family="Consolas,monospace">var edge</text>`;
+  });
+
+  // Clause edges (green)
+  clauseEdges.forEach(([u,v]) => {
+    const pu=pos[u], pv=pos[v];
+    html += `<line x1="${pu.x}" y1="${pu.y}" x2="${pv.x}" y2="${pv.y}" stroke="rgba(57,255,126,0.5)" stroke-width="1.5"/>`;
+  });
+
+  // Nodes
+  nodeLabels.forEach((lbl,i) => {
+    const p = pos[i];
+    const isNeg = lbl.startsWith('~');
+    const color = isNeg ? 'var(--set-vs)' : 'var(--set-s)';
+    const fill = isNeg ? 'rgba(255,77,109,0.15)' : 'rgba(0,229,255,0.15)';
+    html += `<circle cx="${p.x}" cy="${p.y}" r="18" fill="${fill}" stroke="${color}" stroke-width="2"/>`;
+    html += `<text x="${p.x}" y="${p.y+4}" text-anchor="middle" fill="${color}" font-size="10" font-weight="700" font-family="Consolas,monospace">${lbl}</text>`;
+  });
+
+  // Column labels
+  html += `<text x="${colX1}" y="16" text-anchor="middle" fill="var(--set-s)" font-size="10" font-weight="700" font-family="Consolas,monospace">True literals (S)</text>`;
+  html += `<text x="${colX2}" y="16" text-anchor="middle" fill="var(--set-vs)" font-size="10" font-weight="700" font-family="Consolas,monospace">False literals (V\\S)</text>`;
+
+  svg.innerHTML = html;
+
+  // Info panels
+  document.getElementById('reduction-formula').innerHTML =
+    `Variables: ${vars.join(', ')}<br>` +
+    clauses.map((c,i) => `Clause ${i+1}: (${c.join(' ∨ ')})`).join('<br>');
+
+  document.getElementById('reduction-graph-info').innerHTML =
+    `Nodes: ${n} (${vars.length} vars × 2)<br>` +
+    `Variable edges: ${varEdges.length}<br>` +
+    `Clause edges: ${clauseEdges.length} (${clauses.length} triangles)<br>` +
+    `Total edges: ${edgeList.length}<br>` +
+    `Threshold k = ${k}`;
+
+  const warningHtml = warnings.length > 0
+    ? `<div style="margin-bottom:8px;padding:8px;background:rgba(255,183,0,0.08);border:1px solid rgba(255,183,0,0.3);border-radius:6px;">` +
+      `<strong style="color:var(--accent4)">⚠ Edge Cases Detected:</strong><br>` +
+      warnings.map(w => `• ${w}`).join('<br>') +
+      `</div>` : '';
+
+  document.getElementById('reduction-explanation').innerHTML =
+    warningHtml +
+    `<strong style="color:var(--accent5)">How to read this graph:</strong><br>` +
+    `• <span style="color:var(--set-s)">Blue nodes</span> = positive literals (go in Set S if TRUE)<br>` +
+    `• <span style="color:var(--set-vs)">Red nodes</span> = negative literals (go in Set V\\S if TRUE)<br>` +
+    `• <span style="color:rgba(167,139,250,0.8)">Purple dashed edges</span> = variable edges (force xᵢ and ¬xᵢ apart)<br>` +
+    `• <span style="color:var(--accent3)">Green edges</span> = clause triangle edges<br>` +
+    `• A valid NAE-3-SAT assignment → cut ≥ ${k} edges ✓<br><br>` +
+    `<strong style="color:var(--accent5)">Edge Case Handling:</strong><br>` +
+    `• Repeated literal (x1,x1,x2): self-loop edge skipped — only distinct pairs added<br>` +
+    `• Complementary literals (x1,~x1,x2): already forced apart by variable edge, clause still valid<br>` +
+    `• Duplicate edges across clauses: deduplicated automatically using edge set`;
+
+  document.getElementById('reduction-result').style.display = 'block';
+  showNotif(warnings.length > 0 ? `Graph built with ${warnings.length} edge case warning(s)` : `Graph built: ${n} nodes, ${edgeList.length} edges`);
+}
+
+function sendReductionToVisualizer() {
+  if (!reductionEdgeStr) { showNotif('Build the graph first!'); return; }
+  tryInVisualizer(reductionEdgeStr, 'greedy');
+}
+
+// ═══════════════════════════════════
+//  INIT
+// ═══════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadPreset(0);
+  setMode('greedy');
+  renderPseudo();
+  resetAll();
+  loadComparePreset(0);
+  initDrag();
+});
+</script>
+</body>
+</html>
